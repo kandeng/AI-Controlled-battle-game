@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "websocket-sharp": "1.0.3-rc11"
-  },
-  "registry": "https://packages.unity.com"
-}
