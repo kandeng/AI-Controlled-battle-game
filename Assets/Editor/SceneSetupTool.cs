@@ -4,8 +4,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Editor script to automatically setup Play.unity scene with InGameManager
-/// Run this once to fix the "No cameras rendering" issue
+/// Editor script to automatically setup Play Scene.unity with NetworkManager and InGameManager
+/// Run this once to fix the "No cameras rendering" and input not working issues
 /// </summary>
 public class SceneSetupTool : EditorWindow
 {
@@ -27,47 +27,84 @@ public class SceneSetupTool : EditorWindow
         Scene scene = EditorSceneManager.OpenScene(scenePath);
         Debug.Log($"[SceneSetup] Opened scene: {scenePath}");
         
-        // Check if InGameManager already exists
-        GameObject existingManager = GameObject.Find("InGameManager");
-        if (existingManager != null)
+        string results = "";
+        bool anyAdded = false;
+        
+        // --- Add NetworkManager ---
+        GameObject existingNM = GameObject.Find("NetworkManager");
+        if (existingNM != null)
         {
+            results += "✓ NetworkManager already in scene\n";
+            Debug.Log("[SceneSetup] NetworkManager already exists in scene");
+        }
+        else
+        {
+            string nmPrefabPath = "Assets/FPS-Game/Prefabs/System/NetworkManager.prefab";
+            GameObject nmPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(nmPrefabPath);
+            
+            if (nmPrefab == null)
+            {
+                // Try alternate path
+                nmPrefabPath = "Assets/FPS-Game/Prefabs/NetworkManager.prefab";
+                nmPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(nmPrefabPath);
+            }
+            
+            if (nmPrefab != null)
+            {
+                GameObject nm = PrefabUtility.InstantiatePrefab(nmPrefab) as GameObject;
+                nm.name = "NetworkManager";
+                results += "✓ NetworkManager added to scene\n";
+                Debug.Log("[SceneSetup] ✓ Added NetworkManager to scene");
+                anyAdded = true;
+            }
+            else
+            {
+                results += "❌ NetworkManager prefab not found!\n";
+                Debug.LogError("[SceneSetup] NetworkManager prefab not found!");
+            }
+        }
+        
+        // --- Add InGameManager ---
+        GameObject existingIGM = GameObject.Find("InGameManager");
+        if (existingIGM != null)
+        {
+            results += "✓ InGameManager already in scene\n";
             Debug.Log("[SceneSetup] InGameManager already exists in scene");
-            EditorUtility.DisplayDialog("Info", 
-                "InGameManager is already in the scene!\nNo setup needed.", 
-                "OK");
-            return;
         }
-        
-        // Load InGameManager prefab
-        string prefabPath = "Assets/FPS-Game/Prefabs/System/InGameManager.prefab";
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-        
-        if (prefab == null)
+        else
         {
-            EditorUtility.DisplayDialog("Error", 
-                $"InGameManager prefab not found at: {prefabPath}", 
-                "OK");
-            return;
+            string igmPrefabPath = "Assets/FPS-Game/Prefabs/System/InGameManager.prefab";
+            GameObject igmPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(igmPrefabPath);
+            
+            if (igmPrefab != null)
+            {
+                GameObject igm = PrefabUtility.InstantiatePrefab(igmPrefab) as GameObject;
+                igm.name = "InGameManager";
+                results += "✓ InGameManager added to scene\n";
+                Debug.Log("[SceneSetup] ✓ Added InGameManager to scene");
+                anyAdded = true;
+            }
+            else
+            {
+                results += "❌ InGameManager prefab not found!\n";
+                Debug.LogError("[SceneSetup] InGameManager prefab not found!");
+            }
         }
         
-        // Instantiate prefab in scene
-        GameObject inGameManager = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-        inGameManager.name = "InGameManager";
+        // Save if anything was added
+        if (anyAdded)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            results += "✓ Scene saved\n";
+            Debug.Log("[SceneSetup] ✓ Scene saved");
+        }
         
-        Debug.Log("[SceneSetup] ✓ Added InGameManager to scene");
-        
-        // Mark scene as dirty
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene);
-        
-        Debug.Log("[SceneSetup] ✓ Scene saved");
-        
-        // Success message
-        EditorUtility.DisplayDialog("Success!", 
-            "✓ InGameManager added to Play.unity scene\n\n" +
-            "Next steps:\n" +
+        // Show result
+        EditorUtility.DisplayDialog("Scene Setup Complete", 
+            results + "\nNext steps:\n" +
             "1. Select InGameManager in Hierarchy\n" +
-            "2. In Inspector, set Game Mode to 'SinglePlayer' (for testing)\n" +
+            "2. In Inspector, set Game Mode to 'SinglePlayer'\n" +
             "3. Press Play (▶️) to test", 
             "OK");
     }
@@ -75,32 +112,60 @@ public class SceneSetupTool : EditorWindow
     [MenuItem("Tools/Verify Scene Setup")]
     public static void VerifySceneSetup()
     {
-        GameObject manager = GameObject.Find("InGameManager");
+        string results = "";
+        bool allGood = true;
         
-        if (manager == null)
+        // Check NetworkManager
+        GameObject nm = GameObject.Find("NetworkManager");
+        if (nm == null)
         {
-            EditorUtility.DisplayDialog("Verification Failed", 
-                "❌ InGameManager NOT found in current scene!\n\n" +
-                "Please run: Tools → Setup Play Scene", 
-                "OK");
-            return;
+            results += "❌ NetworkManager NOT found in scene!\n";
+            allGood = false;
+        }
+        else
+        {
+            results += "✓ NetworkManager found in scene\n";
         }
         
-        // Check if script is attached
-        var script = manager.GetComponent<MonoBehaviour>();
-        if (script == null)
+        // Check InGameManager
+        GameObject igm = GameObject.Find("InGameManager");
+        if (igm == null)
         {
-            EditorUtility.DisplayDialog("Warning", 
-                "⚠️ InGameManager exists but script may be missing!\n\n" +
-                "Check the Inspector for 'Missing Script' errors.", 
-                "OK");
-            return;
+            results += "❌ InGameManager NOT found in scene!\n";
+            allGood = false;
+        }
+        else
+        {
+            results += "✓ InGameManager found in scene\n";
         }
         
-        EditorUtility.DisplayDialog("Verification Passed", 
-            "✓ InGameManager found in scene\n" +
-            "✓ Script attached: " + script.GetType().Name + "\n\n" +
-            "Ready to play!", 
+        // Check for missing scripts on InGameManager
+        if (igm != null)
+        {
+            var components = igm.GetComponents<MonoBehaviour>();
+            bool hasMissing = false;
+            foreach (var comp in components)
+            {
+                if (comp == null)
+                {
+                    hasMissing = true;
+                    break;
+                }
+            }
+            if (hasMissing)
+            {
+                results += "⚠️ InGameManager has missing scripts!\n";
+                allGood = false;
+            }
+            else
+            {
+                results += "✓ No missing scripts on InGameManager\n";
+            }
+        }
+        
+        EditorUtility.DisplayDialog(
+            allGood ? "Verification Passed" : "Verification Failed", 
+            results, 
             "OK");
     }
 }
