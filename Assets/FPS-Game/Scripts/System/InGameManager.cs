@@ -107,22 +107,6 @@ public class InGameManager : NetworkBehaviour
         }
         Instance = this;
         
-        // Initialize based on game mode
-        switch (gameMode)
-        {
-            case GameMode.Multiplayer:
-                InitializeMultiplayerMode();
-                break;
-                
-            case GameMode.WebSocketAgent:
-                InitializeWebSocketMode();
-                break;
-                
-            case GameMode.SinglePlayer:
-                InitializeSinglePlayerMode();
-                break;
-        }
-        
         // Common initialization (runs for all modes)
         PlayerCamera = Instantiate(_playerCamera);
         GameObject obj = Instantiate(_playerFollowCamera);
@@ -155,6 +139,26 @@ public class InGameManager : NetworkBehaviour
                 spawnInGameManager.GetZonesContainer(),
                 spawnInGameManager.GetZonePortalsContainer()
             );
+        }
+    }
+    
+    void Start()
+    {
+        // Initialize based on game mode
+        // Moved from Awake() to Start() to ensure NetworkManager.Singleton is ready
+        switch (gameMode)
+        {
+            case GameMode.Multiplayer:
+                InitializeMultiplayerMode();
+                break;
+                
+            case GameMode.WebSocketAgent:
+                InitializeWebSocketMode();
+                break;
+                
+            case GameMode.SinglePlayer:
+                InitializeSinglePlayerMode();
+                break;
         }
     }
     
