@@ -192,6 +192,14 @@ public class InGameManager : NetworkBehaviour
     void InitializeMultiplayerMode()
     {
         Debug.Log("[InGameManager] Initializing Multiplayer Mode");
+        
+        // Start NetworkManager as host (server + client for single-player testing)
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.StartHost();
+            Debug.Log("[InGameManager] Multiplayer: NetworkManager started as host");
+        }
+        
         // Existing multiplayer initialization logic
         // LobbyRelayChecker will be initialized in common section
     }
