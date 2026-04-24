@@ -13,12 +13,12 @@ public class SceneSetupTool : EditorWindow
     public static void SetupPlayScene()
     {
         // Open the Play scene
-        string scenePath = "Assets/FPS-Game/Scenes/MainScenes/Play.unity";
+        string scenePath = "Assets/FPS-Game/Scenes/MainScenes/Play Scene.unity";
         
         if (!System.IO.File.Exists(scenePath))
         {
             EditorUtility.DisplayDialog("Error", 
-                $"Play.unity not found at: {scenePath}\nPlease verify the scene exists.", 
+                $"Play Scene.unity not found at: {scenePath}\nPlease verify the scene exists.", 
                 "OK");
             return;
         }
