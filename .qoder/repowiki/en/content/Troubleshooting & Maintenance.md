@@ -13,7 +13,24 @@
 - [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
 - [GameSceneManager.cs](file://Assets/FPS-Game/Scripts/GameSceneManager.cs)
 - [BehaviorTree.cs](file://Assets/Behavior%20Designer/Runtime/BehaviorTree.cs)
+- [WebSocketServerManager.cs](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs)
+- [WebSocket/README_WEBSOCKET_INSTALLATION.md](file://Assets/FPS-Game/Scripts/System/WebSocket/README_WEBSOCKET_INSTALLATION.md)
+- [WebSocket/SETUP_GUIDE.md](file://Assets/FPS-Game/Scripts/System/WebSocket/SETUP_GUIDE.md)
+- [CommandRouter.cs](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs)
+- [PlayerUI.cs](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs)
+- [NetcodeForGameObjects.asset](file://ProjectSettings/NetcodeForGameObjects.asset)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab)
+- [System/NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Completely rewritten networking troubleshooting procedures to focus on "Cannot connect to host" scenarios instead of "Cannot connect to lobby"
+- Added comprehensive Netcode port 7777 firewall configuration guidance
+- Updated IP connectivity verification procedures for direct connections
+- Removed Unity Services and Lobby system troubleshooting in favor of direct networking validation
+- Added WebSocket integration troubleshooting for AI agent scenarios
+- Updated step-by-step resolution procedures to reflect new networking architecture
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -28,271 +45,162 @@
 10. [Conclusion](#conclusion)
 
 ## Introduction
-This document provides comprehensive troubleshooting and maintenance guidance for the project. It focuses on diagnosing and resolving common issues such as networking synchronization anomalies, AI behavior inconsistencies, performance bottlenecks, and asset loading errors. It also outlines systematic debugging approaches using the built-in debug system, log analysis, and network monitoring techniques. Step-by-step resolution procedures are included for typical scenarios like connection drops, desynchronization, and AI pathfinding failures. Additionally, it documents maintenance procedures including project cleanup, dependency updates, and performance optimization, with project-specific considerations for Unity Gaming Services, Behavior Designer setup, and Netcode for GameObjects integration.
+This document provides comprehensive troubleshooting and maintenance guidance for the project's networking infrastructure. The focus has shifted from Unity Gaming Services and Lobby system troubleshooting to direct networking connectivity issues, particularly "Cannot connect to host" scenarios. It addresses IP connectivity verification, Netcode port 7777 firewall configuration, and direct connection troubleshooting. The document covers AI behavior inconsistencies, performance bottlenecks, and asset loading errors, while providing systematic debugging approaches using the built-in debug system, log analysis, and network monitoring techniques.
 
 ## Project Structure
-The project is organized into several major areas:
-- Scripts: Core gameplay systems, AI, networking, and utilities
-- FPS-Game: Content assets (animations, models, prefabs, scenes)
-- Behavior Designer: Third-party AI framework integration
-- ProjectSettings: Engine and package configuration
+The project maintains a modular architecture with three primary networking modes:
+- Direct Netcode connections using port 7777
+- WebSocket integration for AI agent control
+- Legacy lobby system (deprecated)
 
 ```mermaid
 graph TB
-subgraph "Scripts"
-A["System<br/>InGameManager.cs"]
-B["Player<br/>PlayerRoot.cs"]
-C["Bot AI<br/>BotController.cs"]
-D["Bot AI<br/>PerceptionSensor.cs"]
-E["Bot AI<br/>BlackboardLinker.cs"]
-F["Bot AI<br/>BotTactics.cs"]
-G["Bot AI<br/>WaypointPath.cs"]
-H["Bot AI<br/>AIInputFeeder.cs"]
-I["Debug<br/>DebugManager.cs"]
-J["System<br/>GameSceneManager.cs"]
+subgraph "Direct Netcode Mode"
+A["NetworkManager.prefab<br/>Port 7777<br/>Address 127.0.0.1"]
+B["System/NetworkManager.prefab<br/>ServerListenAddress 0.0.0.0"]
+C["NetcodeForGameObjects.asset<br/>Default Prefabs"]
 end
-subgraph "Behavior Designer"
-K["Runtime<br/>BehaviorTree.cs"]
+subgraph "WebSocket Mode"
+D["WebSocketServerManager.cs<br/>Port 8080<br/>/agent endpoint"]
+E["CommandRouter.cs<br/>Agent command routing"]
+F["WebSocket/SETUP_GUIDE.md<br/>Installation instructions"]
 end
-A --> B
-C --> D
-C --> E
-C --> F
-C --> G
-C --> H
+subgraph "Legacy Systems"
+G["LobbyManager.prefab<br/>Deprecated"]
+H["PlayerUI.cs<br/>Quit handling"]
+I["EscapeUI.cs<br/>Quit button logic"]
+end
+A --> C
+B --> C
 D --> E
-F --> E
-B --> H
-I -.-> B
-I -.-> C
-J --> A
-K -.-> C
+F --> D
 ```
 
 **Diagram sources**
-- [InGameManager.cs:66-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L139)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
-- [BotController.cs:62-485](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L62-L485)
-- [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
-- [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
-- [BotTactics.cs:17-456](file://Assets/FPS-Game/Scripts/Bot/BotTactics.cs#L17-L456)
-- [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
-- [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
-- [DebugManager.cs:5-19](file://Assets/FPS-Game/Scripts/Debug/DebugManager.cs#L5-L19)
-- [GameSceneManager.cs:4-26](file://Assets/FPS-Game/Scripts/GameSceneManager.cs#L4-L26)
-- [BehaviorTree.cs:6-11](file://Assets/Behavior%20Designer/Runtime/BehaviorTree.cs#L6-L11)
+- [NetworkManager.prefab:45-99](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L45-L99)
+- [System/NetworkManager.prefab:46-99](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L46-L99)
+- [WebSocketServerManager.cs:17-102](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L102)
+- [WebSocket/SETUP_GUIDE.md:1-51](file://Assets/FPS-Game/Scripts/System/WebSocket/SETUP_GUIDE.md#L1-L51)
+- [PlayerUI.cs:128-170](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L128-L170)
 
 **Section sources**
-- [InGameManager.cs:66-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L139)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
-- [BotController.cs:62-485](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L62-L485)
-- [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
-- [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
-- [BotTactics.cs:17-456](file://Assets/FPS-Game/Scripts/Bot/BotTactics.cs#L17-L456)
-- [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
-- [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
-- [DebugManager.cs:5-19](file://Assets/FPS-Game/Scripts/Debug/DebugManager.cs#L5-L19)
-- [GameSceneManager.cs:4-26](file://Assets/FPS-Game/Scripts/GameSceneManager.cs#L4-L26)
-- [BehaviorTree.cs:6-11](file://Assets/Behavior%20Designer/Runtime/BehaviorTree.cs#L6-L11)
+- [NetworkManager.prefab:45-99](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L45-L99)
+- [System/NetworkManager.prefab:46-99](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L46-L99)
+- [WebSocketServerManager.cs:17-102](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L102)
+- [WebSocket/SETUP_GUIDE.md:1-51](file://Assets/FPS-Game/Scripts/System/WebSocket/SETUP_GUIDE.md#L1-L51)
+- [PlayerUI.cs:128-170](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L128-L170)
 
 ## Core Components
-- Debug system: Centralized toggle for ignoring player during perception checks.
-- AI perception and behavior: Sensor-based detection, Behavior Designer integration, and tactical scanning.
-- Networking and scene management: Network-aware managers and persistent scene loader.
-- Waypoint and movement: Patrol pathing and movement synchronization to AI inputs.
+The networking system now centers around three key components:
+- **Direct Netcode Connections**: Using Unity Netcode for GameObjects with configurable port 7777
+- **WebSocket Integration**: For AI agent control with port 8080 and /agent endpoint
+- **Legacy Support**: Minimal lobby system remnants for backward compatibility
 
 Key responsibilities:
-- DebugManager: Singleton debug toggle affecting perception filtering.
-- PerceptionSensor: Field-of-view, raycast-based visibility, last-known position tracking, and tactical scanning triggers.
-- BlackboardLinker: Bidirectional binding between Behavior Designer variables and runtime state.
-- BotController: State machine orchestration, behavior activation, and input forwarding to PlayerRoot.
-- PlayerRoot: Aggregates subsystems, exposes initialization hooks, and manages child component discovery.
-- InGameManager: Networked game state, NavMesh pathfinding helper, and RPC-based player info retrieval.
-- WaypointPath: Patrol route container synchronized with global waypoint list.
+- NetworkManager.prefab: Primary Netcode configuration with port 7777 settings
+- WebSocketServerManager: Bi-directional communication for AI agents
+- CommandRouter: Translates agent commands to game actions
+- NetcodeForGameObjects.asset: Default network prefab management
 
 **Section sources**
-- [DebugManager.cs:5-19](file://Assets/FPS-Game/Scripts/Debug/DebugManager.cs#L5-L19)
-- [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
-- [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
-- [BotController.cs:62-485](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L62-L485)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
-- [InGameManager.cs:66-232](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L232)
-- [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
+- [NetworkManager.prefab:45-99](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L45-L99)
+- [WebSocketServerManager.cs:17-102](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L102)
+- [CommandRouter.cs:9-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L9-L49)
+- [NetcodeForGameObjects.asset:1-18](file://ProjectSettings/NetcodeForGameObjects.asset#L1-L18)
 
 ## Architecture Overview
-The system integrates a Behavior Designer-driven AI pipeline with a perception and tactical scanning subsystem, coordinated by a central controller and synchronized to player inputs. Networking is handled via Netcode for GameObjects, with a dedicated manager for cross-scene persistence and RPC communication.
+The system now supports multiple networking architectures with clear separation of concerns:
 
 ```mermaid
 sequenceDiagram
-participant Scene as "GameSceneManager"
-participant Manager as "InGameManager"
-participant Player as "PlayerRoot"
-participant Bot as "BotController"
-participant Sensor as "PerceptionSensor"
-participant Linker as "BlackboardLinker"
-participant BD as "Behavior Designer"
-Scene->>Manager : Load scene and initialize
-Manager->>Player : Instantiate cameras and managers
-Manager->>Bot : Initialize controller and subscribe to events
-Bot->>Sensor : Subscribe to perception events
-Bot->>Linker : Bind active behavior variables
-Bot->>BD : Enable behavior and seed variables
-Sensor->>Linker : Update look/move/attack values
-Linker->>Player : Forward inputs to AIInputFeeder
-Note over Bot,BD : Behavior controls tactical scanning and patrol
+participant Client as "Client Device"
+participant Netcode as "Netcode Transport<br/>Port 7777"
+participant Server as "Server Host"
+participant WS as "WebSocket Server<br/>Port 8080"
+participant Agent as "AI Agent"
+Note over Client,Server : Direct Netcode Connection
+Client->>Netcode : Connect to 127.0.0.1 : 7777
+Netcode->>Server : Establish connection
+Server-->>Client : Network session established
+Note over Agent,WS : WebSocket Agent Integration
+Agent->>WS : Connect ws : //localhost : 8080/agent
+WS-->>Agent : Welcome message
+Agent->>WS : Send commands (MOVE/LOOK/SHOOT)
+WS->>CommandRouter : Route commands
+CommandRouter->>Server : Execute actions
 ```
 
 **Diagram sources**
-- [GameSceneManager.cs:4-26](file://Assets/FPS-Game/Scripts/GameSceneManager.cs#L4-L26)
-- [InGameManager.cs:97-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L97-L139)
-- [PlayerRoot.cs:202-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L202-L366)
-- [BotController.cs:92-120](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L92-L120)
-- [PerceptionSensor.cs:48-107](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L48-L107)
-- [BlackboardLinker.cs:86-113](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L86-L113)
-- [BehaviorTree.cs:6-11](file://Assets/Behavior%20Designer/Runtime/BehaviorTree.cs#L6-L11)
+- [NetworkManager.prefab:92-95](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L92-L95)
+- [System/NetworkManager.prefab:92-95](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L92-L95)
+- [WebSocketServerManager.cs:71-95](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L95)
+- [CommandRouter.cs:14-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L14-L49)
 
 ## Detailed Component Analysis
 
-### AI Perception and Behavior Pipeline
-The AI perception and behavior pipeline consists of:
-- PerceptionSensor: Detects players within FOV/range, tracks last-known positions, and triggers scanning events.
-- BlackboardLinker: Bridges C# runtime state to Behavior Designer variables and vice versa.
-- BotController: Orchestrates state transitions, starts/stops behaviors, and forwards inputs to PlayerRoot.
-- AIInputFeeder: Receives movement/look/attack signals and applies them to the player character.
-- WaypointPath: Supplies patrol routes synchronized with global waypoint lists.
+### Direct Netcode Connection Architecture
+The primary networking mechanism uses Unity Netcode for GameObjects with configurable transport settings:
 
 ```mermaid
 classDiagram
-class PerceptionSensor {
-+Transform targetPlayer
-+PlayerRoot targetPlayerRoot
-+TPointData lastKnownData
-+float viewDistance
-+LayerMask obstacleMask
-+event OnTargetPlayerIsDead
-+event OnPlayerLost
-+CheckSurroundingFOV(targets, range, fov, mask) PlayerRoot
-+ScanInfoPointInArea() void
-+GetLastKnownPlayerData() TPointData
+class NetworkManagerPrefab {
++NetworkConfig : ProtocolVersion, PlayerPrefab, Prefabs
++NetworkTransport : m_ProtocolType=1, m_MaxPayloadSize=6144
++ConnectionData : Address=127.0.0.1, Port=7777, ServerListenAddress=127.0.0.1
++EnableSceneManagement : 1, EnableNetworkLogs : 1
 }
-class BlackboardLinker {
-+Behavior activeBehavior
-+Vector3 moveDir
-+Vector3 lookEuler
-+bool attack
-+BindToBehavior(behavior) void
-+SetTargetPlayer(transform) void
-+SetLastKnownPlayerData(data) void
-+SetCurrentTacticalPoint(data) void
-+SetCurrentVisiblePoint(points) void
-+SetTargetInfoPointToPatrol(point) void
-+SetCurrentScanRange(range) void
-+SetIsMoving(b) void
-+SetScanAllArea(b) void
-+SetTargetPortalListEmpty(b) void
-+SetTargetPlayerIsDead(b) void
-+GetMovDir() Vector3
-+GetLookEuler() Vector3
-+GetAttack() bool
+class SystemNetworkManager {
++ConnectionData : Address=127.0.0.1, Port=7777, ServerListenAddress=0.0.0.0
++RunInBackground : 1, LogLevel : 0
 }
-class BotController {
-+State currentState
-+Behavior idleBehavior
-+Behavior patrolBehavior
-+Behavior combatBehavior
-+PerceptionSensor sensor
-+BlackboardLinker blackboardLinker
-+void SwitchToState(newState)
-+void StartBehavior(b)
-+void StopBehavior(b)
-+void UpdateValues()
+class NetcodeForGameObjects {
++NetworkPrefabsPath : Assets/DefaultNetworkPrefabs.asset
++GenerateDefaultNetworkPrefabs : 1
 }
-class AIInputFeeder {
-+Vector3 moveDir
-+Vector3 lookEuler
-+Action<Vector3> OnMove
-+Action<Vector3> OnLook
-+Action<bool> OnAttack
-}
-class WaypointPath {
-+List<Transform> waypoints
-+int startIndex
-+int CurrentIndex
-}
-BotController --> PerceptionSensor : "subscribes to"
-BotController --> BlackboardLinker : "binds to"
-BlackboardLinker --> PerceptionSensor : "reads BD vars"
-BotController --> AIInputFeeder : "forwards inputs"
-BotController --> WaypointPath : "patrol route"
+NetworkManagerPrefab --> NetcodeForGameObjects : "uses"
+SystemNetworkManager --> NetcodeForGameObjects : "uses"
 ```
 
 **Diagram sources**
-- [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
-- [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
-- [BotController.cs:62-485](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L62-L485)
-- [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
-- [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
+- [NetworkManager.prefab:48-72](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L48-L72)
+- [System/NetworkManager.prefab:48-72](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L48-L72)
+- [NetcodeForGameObjects.asset:15-17](file://ProjectSettings/NetcodeForGameObjects.asset#L15-L17)
 
 **Section sources**
-- [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
-- [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
-- [BotController.cs:62-485](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L62-L485)
-- [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
-- [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
+- [NetworkManager.prefab:48-72](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L48-L72)
+- [System/NetworkManager.prefab:48-72](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L48-L72)
+- [NetcodeForGameObjects.asset:15-17](file://ProjectSettings/NetcodeForGameObjects.asset#L15-L17)
 
-### Behavior Designer Integration
-Behavior Designer is integrated through a thin wrapper and a blackboard linker that synchronizes variables between C# state and BD variables. The controller enables/disables behaviors and seeds initial values.
+### WebSocket Integration for AI Agents
+The WebSocket system provides bidirectional communication for AI agent control:
 
 ```mermaid
 sequenceDiagram
-participant BC as "BotController"
-participant BL as "BlackboardLinker"
-participant BD as "Behavior Designer"
-BC->>BD : EnableBehavior()
-BC->>BL : BindToBehavior(activeBehavior)
-BL->>BD : Set variables (lookEuler, moveDir, attack, etc.)
-BD-->>BL : Get variables (lookEuler, moveDir)
-BL-->>BC : Update runtime state
+participant Agent as "External Agent"
+participant WS as "WebSocketServerManager"
+participant Router as "CommandRouter"
+participant Game as "Game System"
+Agent->>WS : CONNECT ws : //localhost : 8080/agent
+WS-->>Agent : WELCOME message
+Agent->>WS : {"commandType" : "MOVE","data" : {"x" : 0,"y" : 0,"z" : 1}}
+WS->>Router : ExecuteMove(player, command)
+Router->>Game : Apply movement input
+Game-->>Agent : GAME_STATE update
 ```
 
 **Diagram sources**
-- [BotController.cs:281-329](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L281-L329)
-- [BlackboardLinker.cs:86-113](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L86-L113)
-- [BehaviorTree.cs:6-11](file://Assets/Behavior%20Designer/Runtime/BehaviorTree.cs#L6-L11)
+- [WebSocketServerManager.cs:71-95](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L95)
+- [CommandRouter.cs:14-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L14-L49)
 
 **Section sources**
-- [BotController.cs:281-329](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L281-L329)
-- [BlackboardLinker.cs:86-113](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L86-L113)
-- [BehaviorTree.cs:6-11](file://Assets/Behavior%20Designer/Runtime/BehaviorTree.cs#L6-L11)
-
-### Navigation and Pathfinding
-InGameManager provides a NavMesh-based pathfinding helper used by AI movement logic. It calculates normalized movement directions from owner to target positions.
-
-```mermaid
-flowchart TD
-Start(["PathFinding(owner, target)"]) --> Validate["Validate inputs (owner, target)"]
-Validate --> Valid{"Valid?"}
-Valid --> |No| ReturnZero["Return Vector2.zero"]
-Valid --> |Yes| CalcPath["Compute NavMeshPath"]
-CalcPath --> PathOk{"Path corners >= 2?"}
-PathOk --> |No| Warn["Log warning and return Vector2.zero"]
-PathOk --> |Yes| NextCorner["Use next corner after owner"]
-NextCorner --> Normalize["Project to XZ and normalize"]
-Normalize --> ReturnDir["Return move direction"]
-```
-
-**Diagram sources**
-- [InGameManager.cs:202-231](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L202-L231)
-
-**Section sources**
-- [InGameManager.cs:202-231](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L202-L231)
+- [WebSocketServerManager.cs:71-95](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L95)
+- [CommandRouter.cs:14-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L14-L49)
 
 ## Dependency Analysis
-- BotController depends on PerceptionSensor, BlackboardLinker, and Behavior Designer components.
-- BlackboardLinker depends on Behavior Designer GlobalVariables and BD SharedVariables.
-- PlayerRoot aggregates subsystems and exposes initialization hooks for prioritized component setup.
-- InGameManager coordinates navigation points, zones, and provides RPC utilities.
-- WaypointPath synchronizes with a global waypoint list managed by InGameManager.
+The networking system has evolved to minimize external dependencies:
+- Direct Netcode connections: Pure Unity Netcode implementation
+- WebSocket integration: websocket-sharp library for AI agent control
+- Legacy lobby system: Minimal footprint, primarily for UI quit functionality
 
 ```mermaid
 graph LR
@@ -304,6 +212,8 @@ BotController --> WaypointPath
 InGameManager --> WaypointPath
 InGameManager --> BotController
 GameSceneManager --> InGameManager
+WebSocketServerManager --> CommandRouter
+CommandRouter --> PlayerRoot
 ```
 
 **Diagram sources**
@@ -314,6 +224,8 @@ GameSceneManager --> InGameManager
 - [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
 - [InGameManager.cs:66-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L139)
 - [GameSceneManager.cs:4-26](file://Assets/FPS-Game/Scripts/GameSceneManager.cs#L4-L26)
+- [WebSocketServerManager.cs:17-102](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L102)
+- [CommandRouter.cs:9-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L9-L49)
 
 **Section sources**
 - [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
@@ -323,17 +235,113 @@ GameSceneManager --> InGameManager
 - [WaypointPath.cs:10-71](file://Assets/FPS-Game/Scripts/Bot/WaypointPath.cs#L10-L71)
 - [InGameManager.cs:66-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L139)
 - [GameSceneManager.cs:4-26](file://Assets/FPS-Game/Scripts/GameSceneManager.cs#L4-L26)
+- [WebSocketServerManager.cs:17-102](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L102)
+- [CommandRouter.cs:9-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L9-L49)
 
 ## Performance Considerations
-- Reduce unnecessary Behavior Designer variable churn: BlackboardLinker includes type-safe setters that avoid redundant updates.
-- Minimize perception checks: Use DebugManager.IgnorePlayer to bypass player filtering during diagnostics.
-- Optimize NavMesh queries: Prefer caching and avoid recalculating paths every frame; use InGameManager.PathFinding for deterministic movement.
-- Limit gizmo rendering: PerceptionSensor and BotTactics draw extensive gizmos; disable in builds or use editor-only toggles.
-- Network bandwidth: Keep RPC payloads small; batch updates where possible.
-
-[No sources needed since this section provides general guidance]
+- **Netcode Optimization**: Configure m_MaxPacketQueueSize and m_MaxPayloadSize appropriately for your environment
+- **WebSocket Efficiency**: Adjust broadcastInterval (default 0.1s) based on agent requirements
+- **Memory Management**: Monitor websocket-sharp library memory usage for long-running agent sessions
+- **Logging Control**: Use EnableNetworkLogs judiciously to avoid performance impact during profiling
 
 ## Troubleshooting Guide
+
+### Direct Netcode Connection Issues ("Cannot connect to host")
+
+**Updated** Complete rewrite focusing on direct connection scenarios
+
+Symptoms:
+- Client cannot establish connection to server host
+- Connection timeout errors during startup
+- Port 7777 blocked by firewall or antivirus
+- Incorrect IP address configuration
+
+Resolution steps:
+1. **Verify Netcode Configuration**:
+   - Check NetworkManager.prefab ConnectionData.Address and Port settings
+   - Ensure ServerListenAddress is configured correctly (127.0.0.1 for localhost, 0.0.0.0 for external access)
+   - Confirm ProtocolType is set to TCP (value 1)
+
+2. **Firewall and Security Software**:
+   - Add exception for port 7777 in Windows Firewall
+   - Temporarily disable antivirus firewall to test connectivity
+   - Verify router port forwarding if connecting across networks
+
+3. **IP Connectivity Verification**:
+   - Test telnet 127.0.0.1 7777 from client machine
+   - Use netstat -an | findstr 7777 to verify server listening
+   - Check if multiple instances are using the same port
+
+4. **Network Interface Binding**:
+   - For external connections, set ServerListenAddress to 0.0.0.0
+   - For localhost testing, use 127.0.0.1
+   - Verify network adapter configuration
+
+**Section sources**
+- [NetworkManager.prefab:92-95](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L92-L95)
+- [System/NetworkManager.prefab:92-95](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L92-L95)
+- [NetcodeForGameObjects.asset:15-17](file://ProjectSettings/NetcodeForGameObjects.asset#L15-L17)
+
+### WebSocket Integration Issues (AI Agent Control)
+
+**New** Added comprehensive WebSocket troubleshooting
+
+Symptoms:
+- AI agents cannot connect to Unity game
+- WebSocket server fails to start
+- Port 8080 blocked by firewall
+- Command routing failures
+
+Resolution steps:
+1. **Verify WebSocket Installation**:
+   - Ensure websocket-sharp library is properly installed via Package Manager
+   - Check that websocket-sharp.dll exists in Assets/Plugins/
+   - Verify no compilation errors in WebSocket components
+
+2. **Firewall Configuration**:
+   - Add exception for port 8080 in Windows Firewall
+   - Test connectivity using ws://localhost:8080/agent
+   - Verify no security software blocking WebSocket connections
+
+3. **Server Initialization**:
+   - Confirm WebSocketServerManager is attached to InGameManager
+   - Check port and endpoint configuration (default 8080, /agent)
+   - Verify server starts successfully in Unity console
+
+4. **Command Processing**:
+   - Test basic agent commands (MOVE, LOOK, SHOOT)
+   - Monitor CommandRouter execution logs
+   - Verify agent session tracking and command routing
+
+**Section sources**
+- [WebSocketServerManager.cs:71-95](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L95)
+- [WebSocket/README_WEBSOCKET_INSTALLATION.md:49-55](file://Assets/FPS-Game/Scripts/System/WebSocket/README_WEBSOCKET_INSTALLATION.md#L49-L55)
+- [WebSocket/SETUP_GUIDE.md:1-51](file://Assets/FPS-Game/Scripts/System/WebSocket/SETUP_GUIDE.md#L1-L51)
+- [CommandRouter.cs:14-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L14-L49)
+
+### Legacy System Issues (Deprecated)
+
+**Updated** Removed Unity Services and Lobby troubleshooting
+
+Symptoms:
+- References to LobbyManager still appear in code
+- Quit game functionality issues
+- UI elements referencing lobby system
+
+Resolution steps:
+1. **Verify System Cleanup**:
+   - Confirm LobbyManager.prefab is no longer referenced
+   - Check PlayerUI.cs and EscapeUI.cs for lobby-dependent code
+   - Ensure all lobby-related functionality has been removed
+
+2. **Quit Functionality Testing**:
+   - Test quit button behavior in EscapeUI
+   - Verify proper NetworkManager shutdown
+   - Confirm application exits cleanly without lobby dependencies
+
+**Section sources**
+- [PlayerUI.cs:128-170](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L128-L170)
+- [EscapeUI.cs:9-19](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs#L9-L19)
 
 ### Networking Synchronization Issues
 Symptoms:
@@ -433,17 +441,61 @@ Resolution steps:
 
 ### Step-by-Step Resolution Procedures
 
-#### Connection Drops
-1. Confirm server authority:
-   - Ensure only the server invokes server RPCs.
-2. Validate client RPC delivery:
-   - Check ClientRpcParams and sender client IDs.
-3. Reinitialize managers:
-   - Use GameSceneManager to reload scenes and reattach managers.
+#### Direct Netcode Connection Failure
+**Updated** Complete rewrite for host connection scenarios
+
+1. **Verify Server Configuration**:
+   - Check System/NetworkManager.prefab ServerListenAddress (should be 0.0.0.0 for external access)
+   - Confirm Port is set to 7777 in both NetworkManager.prefab and System/NetworkManager.prefab
+   - Verify ProtocolType is TCP (value 1)
+
+2. **Firewall and Security Testing**:
+   - Add Windows Firewall exception for port 7777
+   - Temporarily disable antivirus firewall to test connectivity
+   - Use telnet 127.0.0.1 7777 to verify port accessibility
+
+3. **Network Interface Binding**:
+   - For localhost testing: set Address to 127.0.0.1
+   - For external connections: set Address to server's IP and ServerListenAddress to 0.0.0.0
+   - Verify network adapter is functioning correctly
+
+4. **Connection Verification**:
+   - Monitor Unity console for "Connection established" messages
+   - Check NetworkManager logs for successful client authentication
+   - Verify scene transition completes without manager reinitialization
 
 **Section sources**
-- [InGameManager.cs:146-194](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L146-L194)
-- [GameSceneManager.cs:20-26](file://Assets/FPS-Game/Scripts/GameSceneManager.cs#L20-L26)
+- [System/NetworkManager.prefab:92-95](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L92-L95)
+- [NetworkManager.prefab:92-95](file://Assets/FPS-Game/Prefabs/NetworkManager.prefab#L92-L95)
+- [NetcodeForGameObjects.asset:15-17](file://ProjectSettings/NetcodeForGameObjects.asset#L15-L17)
+
+#### WebSocket Agent Connection Failure
+**New** Comprehensive WebSocket troubleshooting procedure
+
+1. **Library Installation Verification**:
+   - Confirm websocket-sharp library installed via Package Manager
+   - Check Assets/Plugins contains websocket-sharp.dll
+   - Verify no compilation errors in WebSocket components
+
+2. **Server Startup Testing**:
+   - Check Unity console for "[WebSocketServer] Server started on ws://0.0.0.0:8080/agent"
+   - Verify WebSocketServerManager component attached to InGameManager
+   - Test manual server initialization if auto-start disabled
+
+3. **Firewall Configuration**:
+   - Add Windows Firewall exception for port 8080
+   - Test connectivity using ws://localhost:8080/agent
+   - Verify no security software blocking WebSocket connections
+
+4. **Agent Communication Testing**:
+   - Send basic commands (MOVE, LOOK, SHOOT) from agent
+   - Monitor CommandRouter execution logs
+   - Verify game state broadcasts to agents
+
+**Section sources**
+- [WebSocketServerManager.cs:71-95](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L95)
+- [WebSocket/README_WEBSOCKET_INSTALLATION.md:49-55](file://Assets/FPS-Game/Scripts/System/WebSocket/README_WEBSOCKET_INSTALLATION.md#L49-L55)
+- [CommandRouter.cs:14-49](file://Assets/FPS-Game/Scripts/System/CommandRouter.cs#L14-L49)
 
 #### Desynchronization Issues
 1. Inspect movement inputs:
@@ -475,22 +527,24 @@ Resolution steps:
 - Remove unused prefabs and assets from scenes.
 - Delete obsolete Behavior Designer variables and unused tasks.
 - Clean up orphaned components on PlayerRoot and BotController.
+- **Updated**: Remove legacy lobby system references and dependencies.
 
 ### Dependency Updates
-- Update Unity packages via Package Manager (URP, Netcode for GameObjects, Behavior Designer).
+- Update Unity packages via Package Manager (URP, Netcode for GameObjects, websocket-sharp).
 - Reimport assets after package updates to resolve missing references.
+- **Updated**: Verify websocket-sharp library compatibility with Unity version.
 
 ### Performance Optimization
 - Reduce gizmo rendering in play mode.
 - Batch Behavior Designer variable updates in BlackboardLinker.
 - Cache NavMesh paths and reuse movement vectors.
+- **Updated**: Monitor WebSocket server performance for long-running agent sessions.
 
 ### Production Monitoring Strategies
 - Enable structured logging for AI state transitions and perception events.
 - Monitor RPC throughput and latency; alert on excessive packet loss.
 - Track NavMesh bake quality and surface connectivity.
-
-[No sources needed since this section provides general guidance]
+- **Updated**: Monitor WebSocket connection counts and command processing rates.
 
 ## Conclusion
-This guide consolidates practical troubleshooting and maintenance practices for networking, AI behavior, performance, and asset loading. By leveraging the debug system, Behavior Designer integration, and Netcode for GameObjects, teams can systematically diagnose and resolve issues while maintaining robust production workflows. Regular cleanup, dependency updates, and performance tuning ensure long-term project health.
+This guide consolidates practical troubleshooting and maintenance practices for the project's networking infrastructure. The focus has shifted from Unity Gaming Services and Lobby system troubleshooting to direct networking connectivity issues, particularly "Cannot connect to host" scenarios. By leveraging Netcode port 7777 configuration, WebSocket integration for AI agents, and the debug system, teams can systematically diagnose and resolve connectivity issues while maintaining robust production workflows. Regular cleanup, dependency updates, and performance tuning ensure long-term project health, with special attention to firewall configuration and direct connection verification.

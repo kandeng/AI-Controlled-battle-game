@@ -2,191 +2,255 @@
 
 <cite>
 **Referenced Files in This Document**
-- [LobbyManager.prefab](file://Assets/FPS-Game/Prefabs/System/LobbyManager.prefab)
+- [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
+- [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
 - [PlayerNetwork.cs](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs)
 - [HandleSpawnBot.cs](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs)
 - [PlayerUI.cs](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs)
 - [EscapeUI.cs](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs)
-- [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
-- [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
+- [WebSocketServerManager.cs](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs)
+- [AgentWebSocketHandler.cs](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs)
+- [Play Scene.unity](file://Assets/FPS-Game/Scenes/MainScenes/Play Scene.unity)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Complete removal of Unity Services ecosystem integration from all lobby-related components
-- Elimination of LobbyManager system from PlayerUI.cs, EscapeUI.cs, and HandleSpawnBot.cs
-- Migration from Unity Gaming Services to simplified networking approach without external dependencies
-- Removal of all lobby data structures, authentication, and relay systems
-- Implementation of direct networking functionality using Unity Netcode for GameObjects
-- Addition of new operational modes: WebSocketAgent and SinglePlayer
+- Complete removal of Unity Gaming Services-based lobby system and all related components
+- Migration from multi-scene networking approach (SignIn, LobbyList, LobbyRoom) to single-scene Play.unity
+- Replacement of Unity Services integration with direct IP-based connections and simplified networking
+- Elimination of all lobby data structures, authentication, and relay systems
+- Implementation of new operational modes: WebSocketAgent and SinglePlayer
+- Removal of LobbyManager, LobbyRelayChecker, and all Unity Services dependencies
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Current State Assessment](#current-state-assessment)
-3. [Legacy Infrastructure Analysis](#legacy-infrastructure-analysis)
-4. [Simplified Networking Architecture](#simplified-networking-architecture)
-5. [Remaining Components](#remaining-components)
-6. [Migration Impact](#migration-impact)
-7. [Troubleshooting Guide](#troubleshooting-guide)
-8. [Conclusion](#conclusion)
+3. [Architectural Transformation](#architectural-transformation)
+4. [New Networking Architecture](#new-networking-architecture)
+5. [Operational Modes](#operational-modes)
+6. [Direct IP-Based Connections](#direct-ip-based-connections)
+7. [WebSocket Agent Integration](#websocket-agent-integration)
+8. [Single-Player Testing Mode](#single-player-testing-mode)
+9. [Migration Impact Analysis](#migration-impact-analysis)
+10. [Troubleshooting Guide](#troubleshooting-guide)
+11. [Conclusion](#conclusion)
 
 ## Introduction
-This document addresses the complete removal of Unity Services ecosystem from the lobby management system. The lobby management system has undergone a fundamental architectural transformation, moving from a Unity Gaming Services-dependent model to a simplified networking solution that operates independently using Unity Netcode for GameObjects. The Assets/FPS-Game/Scripts/Lobby Script/ directory containing 20+ files including LobbyManager.cs, LobbyCreateUI.cs, LobbyListUI.cs, AuthenticateUI.cs, and Relay.cs has been completely eliminated.
+This document covers the complete architectural transformation of the lobby management system from a Unity Gaming Services-dependent model to a simplified, direct networking solution. The previous multi-scene networking approach utilizing SignIn, LobbyList, and LobbyRoom scenes has been eliminated in favor of a streamlined single-scene Play.unity implementation that supports direct IP-based connections and eliminates external service dependencies.
+
+The lobby management system has undergone fundamental changes, removing all Unity Services integration including LobbyManager, Unity Authentication Service, and Relay hosting capabilities. This transformation enables improved reliability, reduced maintenance overhead, and elimination of external service costs while maintaining core networking functionality through Unity Netcode for GameObjects.
 
 ## Current State Assessment
-The lobby management system has undergone a complete architectural transformation. All Unity Services integration has been removed, leaving only legacy references and minimal infrastructure for backward compatibility. The system now operates as a simplified networking solution without external service dependencies, supporting three distinct operational modes.
+The lobby management system has been completely restructured to operate independently of Unity Gaming Services. The system now supports three distinct operational modes, each designed for different deployment scenarios and use cases. The previous comprehensive lobby infrastructure has been replaced with a streamlined networking solution that focuses on direct connections and simplified player management.
 
 **Section sources**
-- [LobbyManager.prefab:1-47](file://Assets/FPS-Game/Prefabs/System/LobbyManager.prefab#L1-L47)
-- [PlayerNetwork.cs:184-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L184-L195)
-- [PlayerNetwork.cs:508-524](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L508-L524)
+- [GameMode.cs:4-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L4-L20)
+- [InGameManager.cs:66-196](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L196)
 
-## Legacy Infrastructure Analysis
-The remaining infrastructure consists primarily of legacy references and minimal components that previously supported Unity Services integration. These components are largely non-functional but maintained for compatibility.
+## Architectural Transformation
+The transformation represents a complete architectural overhaul from service-dependent to service-independent networking. The new design eliminates all external dependencies while maintaining core functionality through Unity's native networking solutions.
 
-### Legacy References in Core Systems
-- **PlayerNetwork.cs**: Contains commented-out Unity Services code and simplified networking logic
-- **HandleSpawnBot.cs**: References LobbyManager but lacks functional implementation, now uses direct bot spawning
-- **PlayerUI.cs**: Still contains comments about LobbyManager removal and simplified exit functionality
-- **EscapeUI.cs**: Continues to check for lobby host privileges but now always shows quit button
+### Key Changes Implemented
+- **Complete Service Removal**: All Unity Gaming Services components have been removed
+- **Single-Scene Architecture**: Replaced multi-scene approach with unified Play.unity
+- **Direct Connection Model**: Eliminated relay and lobby intermediaries
+- **Simplified Player Management**: Reduced complexity in player identification and state management
+- **Enhanced Reliability**: Removed external failure points and service dependencies
+
+### Legacy Component Elimination
+The following components have been completely removed from the codebase:
+- LobbyManager prefab and scripts
+- Unity Authentication Service integration
+- Relay hosting and connection management
+- Lobby data structure and property management
+- Player host privilege checking systems
+- All Unity Services related UI components
 
 **Section sources**
-- [PlayerNetwork.cs:220-226](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L220-L226)
-- [PlayerNetwork.cs:508-524](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L508-L524)
-- [HandleSpawnBot.cs:30-36](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs#L30-L36)
-- [PlayerUI.cs:134](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L134)
+- [InGameManager.cs:83-88](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L83-L88)
+- [InGameManager.cs:139-145](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L139-L145)
 
-## Simplified Networking Architecture
-The system has migrated to a simplified networking approach that operates independently of Unity Services. The new architecture focuses on direct networking without external service dependencies, supporting three distinct operational modes.
+## New Networking Architecture
+The new networking architecture operates entirely independently of Unity Gaming Services, utilizing Unity Netcode for GameObjects as the primary networking framework. This simplified approach reduces complexity while maintaining robust multiplayer functionality.
 
-### Game Mode Evolution
-The project now supports three distinct operational modes:
-- **Multiplayer**: Traditional Unity Services integration (legacy)
-- **WebSocketAgent**: Direct AI agent control without networking services
-- **SinglePlayer**: Local testing mode
+### Core Networking Components
+The system now relies on Unity's native networking capabilities with enhanced WebSocket support for specialized agent integration scenarios.
 
 ```mermaid
 graph TB
-subgraph "Legacy Multiplayer Mode"
-LM["LobbyManager (Legacy)"]
-US["Unity Services"]
+subgraph "New Direct Networking Architecture"
+DN["Direct IP Connections"]
+NG["Unity Netcode for GameObjects"]
+WS["WebSocket Integration"]
+SP["Single-Player Mode"]
 end
-subgraph "WebSocket Agent Mode"
-WS["WebSocket Server"]
-AI["AI Agents"]
+subgraph "Legacy Unity Services"
+LM["LobbyManager"]
+US["Unity Authentication"]
+REL["Relay Hosting"]
 end
-subgraph "Single Player Mode"
-SP["Local Testing"]
-end
-subgraph "Direct Networking Mode"
-DN["Unity Netcode for GameObjects"]
-end
-LM --> US
-WS --> AI
-DN --> DN
+DN --> NG
+NG --> WS
+WS --> SP
+LM -.-> US
+US -.-> REL
 ```
 
 **Diagram sources**
-- [GameMode.cs:6-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L20)
-- [InGameManager.cs:164-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L181)
+- [GameMode.cs:6-19](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L19)
+- [InGameManager.cs:161-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L161-L181)
 
 **Section sources**
-- [GameMode.cs:6-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L20)
-- [InGameManager.cs:164-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L181)
+- [GameMode.cs:6-19](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L19)
+- [InGameManager.cs:161-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L161-L181)
 
-## Remaining Components
-Despite the complete removal of Unity Services, several components remain for compatibility purposes:
+## Operational Modes
+The system now supports three distinct operational modes, each optimized for specific use cases and deployment scenarios. These modes provide flexibility in how the game handles networking and player connections.
 
-### Minimal Infrastructure
-- **LobbyManager.prefab**: Empty prefab with LobbyManager component reference
-- **Legacy Method Calls**: PlayerUI and EscapeUI continue to reference LobbyManager methods in comments
-- **Commented Code**: PlayerNetwork contains preserved Unity Services integration code as commented examples
-- **Direct Networking**: All networking now operates directly through Unity Netcode for GameObjects
+### Multiplayer Mode
+**Traditional multiplayer**: Maintains existing behavior for backward compatibility but operates without Unity Services dependencies.
 
-### Functional Limitations
-- All LobbyManager methods are non-operational
-- Player host detection returns default values
-- Lobby data structures are inaccessible
-- Relay functionality is completely disabled
-- Authentication through Unity Authentication Service is no longer supported
+### WebSocketAgent Mode
+**Direct AI agent control**: Bypasses Unity Services entirely, enabling direct WebSocket communication with external AI agents.
+
+### SinglePlayer Mode
+**Local testing**: Optimized for single-player development and testing scenarios without any networking overhead.
 
 **Section sources**
-- [LobbyManager.prefab:35-46](file://Assets/FPS-Game/Prefabs/System/LobbyManager.prefab#L35-L46)
-- [PlayerUI.cs:10-11](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs#L10-L11)
-- [PlayerNetwork.cs:220-226](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L220-L226)
+- [GameMode.cs:6-19](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L19)
 
-## Migration Impact
-The complete removal of Unity Services has significant implications for the lobby management system:
+## Direct IP-Based Connections
+The new architecture implements direct IP-based connections that eliminate the need for Unity Gaming Services intermediaries. This approach provides more reliable and predictable networking performance while reducing external dependencies.
 
-### Immediate Effects
-- **Authentication**: No longer supports Unity Authentication Service
-- **Lobby Operations**: Cannot create, join, or manage lobbies
-- **Relay Integration**: Disabled for hosting and joining matches
-- **Player Data**: Cannot store or retrieve lobby-specific player information
-- **Host Privileges**: No longer determined through lobby system
+### Connection Flow
+1. **Direct Client Connection**: Players connect directly to the host's IP address
+2. **Unity Netcode Handshake**: Standard Unity Netcode connection establishment
+3. **Player Identification**: Direct assignment of player names and identifiers
+4. **Game State Synchronization**: Real-time synchronization through Unity's networking layer
 
-### Long-term Benefits
-- **Reduced Dependencies**: Eliminates external service requirements
-- **Simplified Maintenance**: Fewer integration points to maintain
-- **Improved Reliability**: Less complex networking architecture
-- **Cost Reduction**: No subscription fees for external services
-- **Direct Control**: Full control over networking without service limitations
-
-### Compatibility Considerations
-- **Code References**: Legacy code continues to reference removed functionality
-- **UI Components**: Interface elements expect lobby functionality
-- **Event Handling**: Some events may trigger without effect
-- **Debug Logging**: Error messages indicate missing lobby infrastructure
-- **Operational Modes**: New modes require different initialization approaches
+### Player Management Simplification
+The direct connection model simplifies player management by eliminating lobby-based player mapping and authentication processes.
 
 **Section sources**
-- [PlayerNetwork.cs:183-184](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L184)
+- [PlayerNetwork.cs:184-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L184-L195)
+
+## WebSocket Agent Integration
+The WebSocket integration provides specialized support for AI agent communication without relying on Unity Gaming Services. This feature enables external AI systems to interact with the game environment through WebSocket protocols.
+
+### WebSocket Server Architecture
+The system includes a dedicated WebSocket server that manages agent connections and facilitates bidirectional communication between external AI systems and the game environment.
+
+```mermaid
+sequenceDiagram
+participant Agent as External AI Agent
+participant WS as WebSocket Server
+participant Game as Game Environment
+participant Bot as Bot Controller
+Agent->>WS : Connect to /agent endpoint
+WS->>Game : Notify agent connection
+Game->>Bot : Initialize agent session
+Agent->>WS : Send command JSON
+WS->>Game : Route command to CommandRouter
+Game->>Bot : Execute agent action
+Bot->>Game : Return state update
+Game->>WS : Broadcast game state
+WS->>Agent : Send state snapshot
+```
+
+**Diagram sources**
+- [WebSocketServerManager.cs:71-96](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L96)
+- [AgentWebSocketHandler.cs:21-50](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L21-L50)
+
+### Agent Communication Protocol
+The WebSocket system implements a structured communication protocol that enables external AI agents to receive game state updates and send commands for bot control.
+
+**Section sources**
+- [WebSocketServerManager.cs:71-96](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L96)
+- [AgentWebSocketHandler.cs:21-50](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L21-L50)
+
+## Single-Player Testing Mode
+The single-player mode provides an optimized testing environment that simulates multiplayer scenarios without actual networking overhead. This mode is ideal for development, debugging, and performance testing.
+
+### Development Benefits
+- **No Network Overhead**: Eliminates networking complexity during development
+- **Consistent Testing**: Provides predictable testing environments
+- **Performance Optimization**: Enables performance profiling without external factors
+- **Debugging Support**: Simplifies debugging through direct access to game state
+
+**Section sources**
+- [InGameManager.cs:177-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L177-L181)
+
+## Migration Impact Analysis
+The complete removal of Unity Gaming Services has significant implications across all aspects of the lobby management system and related networking components.
+
+### Immediate System Changes
+- **Authentication Elimination**: No longer supports Unity Authentication Service
+- **Lobby Functionality Removal**: Cannot create, join, or manage lobbies
+- **Relay Integration Disabled**: Hosting and joining matches through relay is no longer possible
+- **Player Data Access**: Cannot store or retrieve lobby-specific player information
+- **Host Privilege Management**: No longer determined through lobby system
+
+### Long-term Advantages
+- **Reduced Dependencies**: Eliminates external service requirements and associated costs
+- **Simplified Maintenance**: Fewer integration points reduce maintenance complexity
+- **Improved Reliability**: Less complex architecture reduces potential failure points
+- **Enhanced Performance**: Direct connections eliminate service latency
+- **Development Flexibility**: Multiple operational modes support diverse deployment scenarios
+
+### Codebase Impact
+The migration has resulted in significant code reduction while improving overall system reliability and maintainability.
+
+**Section sources**
+- [PlayerNetwork.cs:38-40](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L40)
 - [HandleSpawnBot.cs:30-33](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs#L30-L33)
 
 ## Troubleshooting Guide
-Given the simplified architecture, common issues and their resolutions:
+Given the simplified architecture, troubleshooting focuses on direct networking issues and mode-specific configurations rather than Unity Services dependencies.
 
-### Common Issues and Solutions
+### Common Issues and Resolutions
 
-#### Null Reference Exceptions
-**Symptom**: Errors indicating LobbyManager.Instance is null
-**Cause**: Legacy code attempting to access removed functionality
-**Solution**: Review code for LobbyManager references and remove or replace them with direct networking calls
+#### WebSocket Server Connection Problems
+**Symptom**: WebSocket server fails to start or agents cannot connect
+**Cause**: Missing websocket-sharp library dependency
+**Solution**: Install websocket-sharp library via Unity Package Manager and verify server configuration
 
-#### Host Privilege Checks Fail
-**Symptom**: EscapeUI buttons not appearing for legitimate hosts
-**Cause**: LobbyManager methods return default values in non-operative state
-**Solution**: Implement custom host detection logic or disable host-only features
+#### Direct Connection Failures
+**Symptom**: Players cannot connect to hosted games
+**Cause**: Incorrect IP address configuration or firewall restrictions
+**Solution**: Verify host IP address, ensure port forwarding is configured, and check firewall settings
+
+#### Mode Configuration Errors
+**Symptom**: Game does not start in expected operational mode
+**Cause**: Incorrect GameMode enumeration value
+**Solution**: Verify GameMode setting in InGameManager component and ensure proper initialization
 
 #### Bot Spawning Issues
 **Symptom**: Bots not spawning despite configured counts
-**Cause**: HandleSpawnBot relies on LobbyManager for bot count
-**Solution**: Replace with direct bot count configuration or implement custom logic
+**Cause**: HandleSpawnBot dependency on removed lobby system
+**Solution**: Default bot count is now hardcoded to 4 bots per session
 
-#### Networking Problems
-**Symptom**: Players cannot connect or communicate
-**Cause**: Unity Services dependencies removed
-**Solution**: Ensure proper Netcode for GameObjects setup and configuration
-
-### Diagnostic Steps
-1. **Verify Game Mode**: Confirm operating mode in GameMode.cs
-2. **Check References**: Audit code for remaining LobbyManager calls
-3. **Test Connectivity**: Validate Netcode for GameObjects setup
-4. **Review Logs**: Monitor for Unity Services error messages
-5. **Update UI**: Modify interfaces to work without lobby functionality
+### Diagnostic Procedures
+1. **Mode Verification**: Confirm current operational mode in GameMode.cs
+2. **Network Configuration**: Validate IP address and port settings for direct connections
+3. **WebSocket Setup**: Check websocket-sharp library installation and server initialization
+4. **Component Status**: Verify all networking components are properly initialized
+5. **Log Analysis**: Review console logs for specific error messages and stack traces
 
 ### Migration Checklist
-- [ ] Remove all LobbyManager method calls
-- [ ] Update PlayerUI to use direct networking for quit functionality
-- [ ] Modify EscapeUI to always show quit button
-- [ ] Replace HandleSpawnBot with direct bot spawning
-- [ ] Update PlayerNetwork to use direct player identification
-- [ ] Test all operational modes (Multiplayer, WebSocketAgent, SinglePlayer)
+- [ ] Verify GameMode enumeration values are correctly set
+- [ ] Test direct IP connection functionality
+- [ ] Validate WebSocket server operation if using AI agent integration
+- [ ] Confirm bot spawning works with default configuration
+- [ ] Test single-player mode for development scenarios
+- [ ] Verify player name assignment without Unity Services
 
 **Section sources**
+- [WebSocketServerManager.cs:91-95](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L91-L95)
 - [HandleSpawnBot.cs:30-33](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs#L30-L33)
-- [PlayerUI.cs:134](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L134)
-- [EscapeUI.cs:10-11](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs#L10-L11)
 
 ## Conclusion
-The lobby management system has successfully transitioned from a Unity Services-dependent architecture to a simplified networking solution. While this removes advanced features like lobby management, authentication, and relay hosting, it significantly reduces complexity and dependencies. The remaining infrastructure serves as compatibility layers while the core functionality operates independently through Unity Netcode for GameObjects. This migration enables improved reliability, reduced maintenance overhead, and elimination of external service costs, though it requires adaptation of existing workflows and UI components. The new operational modes (WebSocketAgent and SinglePlayer) provide additional flexibility for different deployment scenarios while maintaining the core networking foundation.
+The lobby management system has successfully transitioned from a Unity Gaming Services-dependent architecture to a simplified, direct networking solution. This transformation eliminates external service dependencies while maintaining core networking functionality through Unity Netcode for GameObjects.
+
+The new single-scene Play.unity approach, combined with direct IP-based connections and optional WebSocket agent integration, provides improved reliability, reduced maintenance overhead, and elimination of external service costs. The three operational modes (Multiplayer, WebSocketAgent, SinglePlayer) offer flexibility for different deployment scenarios while the simplified architecture ensures better long-term maintainability.
+
+While this migration removes advanced features like lobby management and Unity Authentication Service integration, it significantly improves system stability and developer experience. The direct networking approach provides more predictable performance and eliminates service-related failure points, resulting in a more robust gaming experience.

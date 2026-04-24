@@ -177,7 +177,13 @@ public class InGameManager : NetworkBehaviour
     void InitializeSinglePlayerMode()
     {
         Debug.Log("[InGameManager] Initializing Single Player Mode");
-        // Similar to WebSocket mode but without WebSocket server
+        
+        // Start NetworkManager as host (server + client)
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.StartHost();
+            Debug.Log("[InGameManager] Single Player: NetworkManager started as host");
+        }
     }
     
     /// <summary>
