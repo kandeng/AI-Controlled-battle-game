@@ -114,7 +114,7 @@ Window → Package Manager → + → Add package by name
 ### Option 1: Single Player (Offline Testing)
 
 1. Open Unity Editor
-2. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Play Scene`
+2. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Play.unity`
 3. Click **Play** button (▶️) at top center
 4. Game starts immediately with AI bots
 
@@ -131,29 +131,23 @@ Window → Package Manager → + → Add package by name
 
 ### Option 2: Multiplayer (Network Play)
 
+**Note**: The Lobby/Relay/Authentication systems have been removed. Multiplayer now uses direct host/client connections.
+
 #### Host a Game
 
 1. Open Unity Editor
-2. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Sign In`
-3. Click **Play**
-4. Sign in with Unity account
-5. Click **Create Lobby**
-6. Configure game settings:
-   - Max players: 2-16
-   - Bot count: 0-8
-   - Map: Italy
-   - Kill limit: 20-50
-7. Click **Start Game**
+2. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Play.unity`
+3. In **InGameManager**, set Game Mode to `Multiplayer`
+4. Click **Play**
+5. The game will start as host - other players can join via direct IP connection
 
 #### Join a Game
 
 1. Open Unity Editor (on another computer or second instance)
-2. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Sign In`
-3. Click **Play**
-4. Sign in with Unity account
-5. Browse available lobbies
-6. Select a lobby and click **Join**
-7. Wait for game to start
+2. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Play.unity`
+3. In **InGameManager**, set Game Mode to `Multiplayer`
+4. Click **Play**
+5. Connect to host's IP address
 
 ### Option 3: WebSocket AI Agent Mode
 
@@ -161,11 +155,11 @@ Window → Package Manager → + → Add package by name
 
 #### Setup Unity Side
 
-1. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Play Scene`
+1. Open scene: `Assets/FPS-Game/Scenes/MainScenes/Play.unity`
 2. Find **InGameManager** GameObject in hierarchy
 3. In Inspector, set **Game Mode** to `WebSocketAgent`
-4. Add component: **WebSocketServerManager**
-5. Add component: **CoroutineManager**
+4. Verify **WebSocketServerManager** component is attached
+5. Verify **CoroutineManager** component is attached
 6. Configure WebSocketServerManager:
    - Port: 8080
    - Endpoint: /agent
@@ -210,10 +204,7 @@ npm run test-full
 3. Choose **x86_64** architecture
 4. Click **Switch Platform** (if not already selected)
 5. Add scenes to build:
-   - `Sign In`
-   - `Lobby List`
-   - `Lobby Room`
-   - `Play Scene`
+   - `Assets/FPS-Game/Scenes/MainScenes/Play.unity`
 6. Click **Build**
 7. Choose output folder
 8. Wait for build to complete (5-15 minutes)
@@ -233,8 +224,11 @@ cd Build/Windows/
 2. Select **Linux** platform
 3. Choose **x86_64** architecture
 4. Click **Switch Platform**
-5. Configure same as Windows build
+5. Add scenes to build:
+   - `Assets/FPS-Game/Scenes/MainScenes/Play.unity`
 6. Click **Build**
+7. Choose output folder
+8. Wait for build to complete (5-15 minutes)
 
 **Run the build**:
 ```bash
@@ -258,10 +252,7 @@ FPS-Game-20260423/
 │   │   ├── Prefabs/             # Reusable game objects
 │   │   ├── Scenes/              # Game scenes
 │   │   │   └── MainScenes/      # Main game scenes
-│   │   │       ├── Sign In      # Authentication scene
-│   │   │       ├── Lobby List   # Lobby browser
-│   │   │       ├── Lobby Room   # Multiplayer lobby
-│   │   │       └── Play Scene   # Main gameplay
+│   │   │       └── Play.unity   # Main gameplay (only scene needed)
 │   │   ├── Scripts/             # All game source code
 │   │   │   ├── Player/          # Player controller and systems
 │   │   │   ├── Bot/             # AI bot implementation
@@ -271,6 +262,8 @@ FPS-Game-20260423/
 │   │   ├── Sound/               # Audio clips
 │   │   ├── Sprites/             # UI images and icons
 │   │   └── World/               # Level design assets
+│   ├── Plugins/                 # Third-party DLLs
+│   │   └── websocket-sharp.dll  # WebSocket library for AI agent
 │   ├── Behavior Designer/       # AI behavior tree framework
 │   └── TextMesh Pro/            # Text rendering system
 ├── Packages/                    # Unity package dependencies
@@ -309,14 +302,13 @@ Edit game parameters in Unity Inspector:
 
 ### Network Configuration
 
-**Unity Services Setup** (for multiplayer):
-1. Edit → Project Settings → Services
-2. Link Unity Project (or create new)
-3. Enable services:
-   - ✅ Authentication
-   - ✅ Relay
-   - ✅ Lobby
-4. Configure region settings
+**Note**: Unity Services (Lobby, Relay, Authentication) have been removed. The game now uses direct peer-to-peer connections via Unity Netcode for GameObjects.
+
+**Multiplayer Setup**:
+1. Host starts game in Play.unity scene
+2. Host's IP address is displayed in console
+3. Clients connect directly to host's IP
+4. No Unity account or internet connection required for LAN play
 
 ---
 
@@ -383,11 +375,12 @@ npm run test-full
 3. Verify websocket-sharp.dll is in Assets/Plugins/
 
 #### Multiplayer Not Working
-**Error**: "Cannot connect to lobby"  
+**Error**: "Cannot connect to host"  
 **Fix**:
-1. Verify Unity Services are enabled
-2. Check internet connection
-3. Verify Authentication, Relay, Lobby services active
+1. Verify host is running Play.unity scene
+2. Check both host and client are on same network
+3. Verify host's IP address is correct
+4. Check firewall isn't blocking port 7777 (default Netcode port)
 
 #### Poor Performance
 **Symptoms**: Low FPS, stuttering  
@@ -421,9 +414,10 @@ This project was developed as a graduation thesis. All rights reserved.
 ## Credits
 
 - **Game Engine**: Unity 6000.4 LTS
-- **Networking**: Unity Netcode for GameObjects, Unity Relay, Unity Lobby
+- **Networking**: Unity Netcode for GameObjects (NGO v2.11.0)
 - **AI Framework**: Behavior Designer
 - **AI Assistant**: Unity AI Assistant
+- **WebSocket Library**: websocket-sharp (v1.0.3-rc11)
 - **Assets**: Unity Asset Store, Mixamo, OpenGameArt
 
 ---
