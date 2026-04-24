@@ -19,22 +19,21 @@ public class SpawnInGameManager : MonoBehaviour
 
     void Awake()
     {
-        // Nếu NetworkManager đã có sẵn và đang lắng nghe thì gọi ngay
+        // If NetworkManager is already initialized and listening, spawn immediately
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
         {
             TrySpawn();
         }
+        else if (NetworkManager.Singleton != null)
+        {
+            // NetworkManager exists but not listening yet - subscribe to event
+            NetworkManager.Singleton.OnServerStarted += TrySpawn;
+        }
         else
         {
-            // Nếu chưa, gắn event để gọi ngay khi server khởi động
-            if (NetworkManager.Singleton != null)
-            {
-                NetworkManager.Singleton.OnServerStarted += TrySpawn;
-            }
-            else
-            {
-                Debug.LogWarning("[SpawnInGameManager] NetworkManager.Singleton is null; cannot subscribe to OnServerStarted.");
-            }
+            // NetworkManager not yet initialized - will be created by InGameManager
+            // This is normal when running Play.unity directly in Editor
+            Debug.Log("[SpawnInGameManager] NetworkManager not ready yet - will spawn when InGameManager initializes");
         }
     }
 

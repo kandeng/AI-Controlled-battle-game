@@ -11,7 +11,19 @@
 - [SharedInt.cs](file://Assets/Behavior Designer/Runtime/Variables/SharedInt.cs)
 - [SharedFloat.cs](file://Assets/Behavior Designer/Runtime/Variables/SharedFloat.cs)
 - [BehaviorTree.cs](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs)
+- [FloatSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED)
+- [IntSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/IntSliderDrawer.cs.DISABLED)
+- [StackedActionDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/StackedActionDrawer.cs.DISABLED)
+- [StackedConditionalDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/StackedConditionalDrawer.cs.DISABLED)
+- [BehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED)
+- [ExternalBehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/ExternalBehaviorTreeInspector.cs.DISABLED)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added Unity 6000.4 compatibility notice explaining temporary editor wrapper script disabling
+- Updated troubleshooting section to address editor capability limitations
+- Clarified that core variable functionality remains fully operational despite editor restrictions
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -19,20 +31,23 @@
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
-10. [Appendices](#appendices)
+6. [Unity 6000.4 Compatibility and Editor Limitations](#unity-60004-compatibility-and-editor-limitations)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
+11. [Appendices](#appendices)
 
 ## Introduction
 This document explains Behavior Designer variable management and AI data binding in the project. It covers:
-- The GlobalVariables asset structure and its integration with Unity’s ScriptableObject system
+- The GlobalVariables asset structure and its integration with Unity's ScriptableObject system
 - The BlackboardLinker system that bridges C# runtime data with Behavior Designer tasks and conditions
 - AI input feeding mechanisms for real-time data exchange between the game engine and behavior trees
 - Practical examples of variable creation, data type mapping, and runtime updates
 - Variable scope management, serialization of AI states, and performance optimization
 - Best practices for organizing AI variables and maintaining clean data flow
+
+**Updated** Added compatibility notice for Unity 6000.4 breaking changes affecting editor functionality.
 
 ## Project Structure
 The variable management system spans two primary areas:
@@ -61,6 +76,14 @@ SV3["SharedVector3"]
 SI["SharedInt"]
 SF["SharedFloat"]
 end
+subgraph "Unity 6000.4 Editor Limitations"
+ED1["FloatSliderDrawer.cs.DISABLED"]
+ED2["IntSliderDrawer.cs.DISABLED"]
+ED3["StackedActionDrawer.cs.DISABLED"]
+ED4["StackedConditionalDrawer.cs.DISABLED"]
+ED5["BehaviorTreeInspector.cs.DISABLED"]
+ED6["ExternalBehaviorTreeInspector.cs.DISABLED"]
+end
 BT --> |"Get/Set variables"| BL
 GV --> |"Global variables"| BL
 BL --> |"Set Global"| GV
@@ -72,6 +95,12 @@ SB --> |"Typed variable"| BT
 SV3 --> |"Typed variable"| BT
 SI --> |"Typed variable"| BT
 SF --> |"Typed variable"| BT
+ED1 -.-> |"Editor customization disabled"| ST
+ED2 -.-> |"Editor customization disabled"| SI
+ED3 -.-> |"Editor customization disabled"| BT
+ED4 -.-> |"Editor customization disabled"| BT
+ED5 -.-> |"Editor customization disabled"| BT
+ED6 -.-> |"Editor customization disabled"| BT
 ```
 
 **Diagram sources**
@@ -84,6 +113,12 @@ SF --> |"Typed variable"| BT
 - [SharedVector3.cs:1-10](file://Assets/Behavior Designer/Runtime/Variables/SharedVector3.cs#L1-L10)
 - [SharedInt.cs:1-8](file://Assets/Behavior Designer/Runtime/Variables/SharedInt.cs#L1-L8)
 - [SharedFloat.cs:1-8](file://Assets/Behavior Designer/Runtime/Variables/SharedFloat.cs#L1-L8)
+- [FloatSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED)
+- [IntSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/IntSliderDrawer.cs.DISABLED)
+- [StackedActionDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/StackedActionDrawer.cs.DISABLED)
+- [StackedConditionalDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/StackedConditionalDrawer.cs.DISABLED)
+- [BehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED)
+- [ExternalBehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/ExternalBehaviorTreeInspector.cs.DISABLED)
 
 **Section sources**
 - [BehaviorDesignerGlobalVariables.asset:1-27](file://Assets/Behavior Designer/Resources/BehaviorDesignerGlobalVariables.asset#L1-L27)
@@ -274,6 +309,40 @@ BL->>BL : "Update moveDir from OnMove"
 - [BehaviorDesignerGlobalVariables.asset:15-17](file://Assets/Behavior Designer/Resources/BehaviorDesignerGlobalVariables.asset#L15-L17)
 - [BlackboardLinker.cs:190-221](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L190-L221)
 
+## Unity 6000.4 Compatibility and Editor Limitations
+
+**Updated** The project has been updated to maintain compatibility with Unity 6000.4, which introduced breaking changes affecting editor functionality. While the core variable management system remains fully functional, several editor wrapper scripts have been temporarily disabled with `.DISABLED` suffixes.
+
+### Current Status
+- **Core functionality intact**: All runtime variable management, data binding, and AI state handling continues to work normally
+- **Editor customization limited**: Several editor scripts have been disabled due to Unity 6000.4 breaking changes
+- **Temporary solution**: These scripts will be re-enabled once compatibility is restored
+
+### Disabled Editor Components
+The following editor scripts are currently disabled:
+- Object Drawer scripts: FloatSliderDrawer.cs.DISABLED, IntSliderDrawer.cs.DISABLED, StackedActionDrawer.cs.DISABLED, StackedConditionalDrawer.cs.DISABLED
+- Inspector scripts: BehaviorTreeInspector.cs.DISABLED, ExternalBehaviorTreeInspector.cs.DISABLED
+
+### Impact Assessment
+- **Runtime performance**: Unaffected - all core systems operate normally
+- **Development workflow**: Partially impacted - custom editor drawers and inspectors are not available
+- **Variable functionality**: Fully operational - all variable types, scopes, and data bindings work as expected
+- **AI behavior**: Unaffected - behavior trees continue to execute with full variable support
+
+### Workarounds and Alternatives
+- Use standard Unity inspector for basic variable editing
+- Manual variable configuration through GlobalVariables asset
+- Continue using runtime binding and data flow patterns established in the codebase
+- Monitor Unity 6000.4 compatibility updates for re-enabling editor features
+
+**Section sources**
+- [FloatSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED)
+- [IntSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/IntSliderDrawer.cs.DISABLED)
+- [StackedActionDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/StackedActionDrawer.cs.DISABLED)
+- [StackedConditionalDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/StackedConditionalDrawer.cs.DISABLED)
+- [BehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED)
+- [ExternalBehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/ExternalBehaviorTreeInspector.cs.DISABLED)
+
 ## Dependency Analysis
 - BlackboardLinker depends on:
   - GlobalVariables for global variable access
@@ -332,6 +401,11 @@ Common issues and resolutions:
   - Confirm the variable exists in the GlobalVariables JSON and is marked as shared/global.
 - Frequent access overhead:
   - Cache SharedVariable<T> references and avoid repeated GetVariable calls in tight loops.
+- Unity 6000.4 editor limitations:
+  - Custom editor drawers and inspectors are temporarily disabled - use standard Unity inspector instead.
+  - Variable functionality itself remains unaffected by these editor changes.
+
+**Updated** Added troubleshooting guidance for Unity 6000.4 editor limitations.
 
 **Section sources**
 - [BlackboardLinker.cs:254-329](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L254-L329)
@@ -340,7 +414,7 @@ Common issues and resolutions:
 ## Conclusion
 The Behavior Designer variable management system combines a JSON-backed GlobalVariables asset with a BlackboardLinker bridge to enable seamless data exchange between C# runtime state and Behavior Designer tasks. By leveraging strongly typed SharedVariable<T> wrappers, careful scope management, and efficient update patterns, the system supports robust AI state handling with predictable performance and maintainable data flow.
 
-[No sources needed since this section summarizes without analyzing specific files]
+**Updated** Despite Unity 6000.4 breaking changes affecting editor functionality, the core variable management system remains fully operational and unaffected.
 
 ## Appendices
 
@@ -350,5 +424,6 @@ The Behavior Designer variable management system combines a JSON-backed GlobalVa
 - Document variable semantics alongside tasks/conditions that consume them.
 - Keep global variables minimal and immutable where possible; use local variables for ephemeral state.
 - Regularly validate variable existence and types during development builds.
+- Monitor Unity compatibility updates for restoring editor customization capabilities.
 
 [No sources needed since this section provides general guidance]

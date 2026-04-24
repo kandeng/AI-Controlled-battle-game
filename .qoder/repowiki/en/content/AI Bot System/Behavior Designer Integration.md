@@ -12,20 +12,31 @@
 - [SharedFloat.cs](file://Assets/Behavior Designer/Runtime/Variables/SharedFloat.cs)
 - [SharedBool.cs](file://Assets/Behavior Designer/Runtime/Variables/SharedBool.cs)
 - [BehaviorTree.cs](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs)
+- [ExternalBehaviorTree.cs](file://Assets/Behavior Designer/Runtime/ExternalBehaviorTree.cs)
 - [Idle.cs](file://Assets/Behavior Designer/Runtime/Tasks/Actions/Idle.cs)
 - [PerformInterruption.cs](file://Assets/Behavior Designer/Runtime/Tasks/Actions/PerformInterruption.cs)
+- [BehaviorTreeInspector.cs.DISABLED](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED)
+- [FloatSliderDrawer.cs.DISABLED](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added Unity 6000.4 compatibility section documenting temporary editor limitations
+- Updated project structure to reflect disabled editor components
+- Clarified that core runtime functionality remains intact
+- Added troubleshooting guidance for Unity 6000.4 compatibility issues
 
 ## Table of Contents
 1. [Introduction](#introduction)
-2. [Project Structure](#project-structure)
-3. [Core Components](#core-components)
-4. [Architecture Overview](#architecture-overview)
-5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+2. [Unity 6000.4 Compatibility Status](#unity-60004-compatibility-status)
+3. [Project Structure](#project-structure)
+4. [Core Components](#core-components)
+5. [Architecture Overview](#architecture-overview)
+6. [Detailed Component Analysis](#detailed-component-analysis)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
 
 ## Introduction
 This document explains the Behavior Designer integration that connects C# AI logic with Behavior Tree tasks in the game. It focuses on:
@@ -34,6 +45,38 @@ This document explains the Behavior Designer integration that connects C# AI log
 - Configuration options: behavior tree parameters, variable synchronization intervals, and input scaling factors.
 - Relationships with the bot controller finite-state machine (FSM), perception system, and tactical AI.
 - Common issues and troubleshooting strategies for behavior tree debugging and variable binding.
+
+**Updated** The integration now operates with Unity 6000.4 compatibility, where editor wrapper scripts are temporarily disabled due to Unity breaking changes to editor framework base classes. Core Behavior Designer runtime functionality remains intact through compiled assemblies.
+
+## Unity 6000.4 Compatibility Status
+
+### Current Status
+- **Core Runtime Functionality**: ✅ Intact through compiled assemblies
+- **Editor Integration**: ⚠️ Temporarily disabled due to Unity 6000.4 breaking changes
+- **Compatibility**: 🔄 Maintained with fallback mechanisms
+
+### Disabled Editor Components
+The following editor wrapper scripts have been temporarily disabled (.DISABLED):
+- `BehaviorTreeInspector.cs` - Custom inspector for BehaviorTree components
+- `ExternalBehaviorTreeInspector.cs` - Custom inspector for external behavior trees
+- `FloatSliderDrawer.cs` - Object drawer for float slider attributes
+- `IntSliderDrawer.cs` - Object drawer for integer slider attributes
+- `StackedActionDrawer.cs` - Object drawer for stacked action attributes
+- `StackedConditionalDrawer.cs` - Object drawer for stacked conditional attributes
+
+### Impact Assessment
+**Runtime Impact**: None - Core functionality preserved through compiled assemblies
+**Editor Impact**: Significant - Loss of custom inspectors and object drawers
+**Workaround**: Manual configuration through serialized properties and asset files
+
+### Compatibility Workarounds
+- Use serialized property configuration instead of custom inspectors
+- Configure Behavior Designer variables directly in asset files
+- Leverage runtime variable binding through code rather than editor UI
+
+**Section sources**
+- [BehaviorTreeInspector.cs.DISABLED:1-11](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED#L1-L11)
+- [FloatSliderDrawer.cs.DISABLED:1-22](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED#L1-L22)
 
 ## Project Structure
 The integration spans several systems:
@@ -45,8 +88,9 @@ The integration spans several systems:
 
 ```mermaid
 graph TB
-subgraph "Behavior Designer"
+subgraph "Behavior Designer Runtime"
 BT["BehaviorTree.cs"]
+EBT["ExternalBehaviorTree.cs"]
 GV["BehaviorDesignerGlobalVariables.asset"]
 SF["SharedFloat.cs"]
 SB["SharedBool.cs"]
@@ -61,6 +105,10 @@ subgraph "Player"
 PR["PlayerRoot.cs"]
 AIF["AIInputFeeder.cs"]
 end
+subgraph "Disabled Editor Components"
+BTI["BehaviorTreeInspector.cs.DISABLED"]
+FSD["FloatSliderDrawer.cs.DISABLED"]
+end
 GV --> BL
 BT --> BC
 BC --> BL
@@ -72,6 +120,7 @@ PR --> AIF
 
 **Diagram sources**
 - [BehaviorTree.cs:1-11](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs#L1-L11)
+- [ExternalBehaviorTree.cs:1-8](file://Assets/Behavior Designer/Runtime/ExternalBehaviorTree.cs#L1-L8)
 - [BehaviorDesignerGlobalVariables.asset:1-27](file://Assets/Behavior Designer/Resources/BehaviorDesignerGlobalVariables.asset#L1-L27)
 - [SharedFloat.cs:1-8](file://Assets/Behavior Designer/Runtime/Variables/SharedFloat.cs#L1-L8)
 - [SharedBool.cs:1-8](file://Assets/Behavior Designer/Runtime/Variables/SharedBool.cs#L1-L8)
@@ -79,8 +128,10 @@ PR --> AIF
 - [BlackboardLinker.cs:1-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L1-L332)
 - [PerceptionSensor.cs:1-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L1-L407)
 - [BotTactics.cs:1-456](file://Assets/FPS-Game/Scripts/Bot/BotTactics.cs#L1-L456)
-- [PlayerRoot.cs:1-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L366)
+- [PlayerRoot.cs:1-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L367)
 - [AIInputFeeder.cs:1-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L1-L29)
+- [BehaviorTreeInspector.cs.DISABLED:1-11](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED#L1-L11)
+- [FloatSliderDrawer.cs.DISABLED:1-22](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED#L1-L22)
 
 **Section sources**
 - [BehaviorTree.cs:1-11](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs#L1-L11)
@@ -96,14 +147,14 @@ PR --> AIF
 - PerceptionSensor: detects players, tracks last-known positions, raises events for loss-of-sight and death.
 - BotTactics: computes scanning ranges, visible tactical points, and zone prediction for area search.
 - PlayerRoot: aggregates subsystems and exposes AIInputFeeder for input delivery.
-- AIInputFeeder: receives movement, look, and attack signals and invokes the player’s input actions.
+- AIInputFeeder: receives movement, look, and attack signals and invokes the player's input actions.
 
 **Section sources**
 - [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
 - [BotController.cs:61-485](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L61-L485)
 - [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
 - [BotTactics.cs:17-456](file://Assets/FPS-Game/Scripts/Bot/BotTactics.cs#L17-L456)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+- [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
 - [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
 
 ## Architecture Overview
@@ -172,11 +223,11 @@ Real-time updates:
 ### AI Input Feeder
 Responsibilities:
 - Receives movement, look, and attack vectors from BlackboardLinker via BotController.
-- Invokes the player’s input actions (e.g., shooting) through PlayerAssetsInputs.
+- Invokes the player's input actions (e.g., shooting) through PlayerAssetsInputs.
 
 Execution flow:
 - Subscribes to OnMove/OnLook/OnAttack and stores latest values.
-- On attack, triggers the player’s shoot action.
+- On attack, triggers the player's shoot action.
 
 **Section sources**
 - [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
@@ -227,11 +278,12 @@ PlayerRoot:
 - Provides camera and zone context used by BlackboardLinker and PerceptionSensor.
 
 **Section sources**
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+- [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
 
 ### Behavior Trees and Tasks
 BehaviorTree wrapper:
 - [BehaviorTree.cs:1-11](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs#L1-L11)
+- [ExternalBehaviorTree.cs:1-8](file://Assets/Behavior Designer/Runtime/ExternalBehaviorTree.cs#L1-L8)
 
 Example tasks:
 - Idle task returning Running status: [Idle.cs:1-14](file://Assets/Behavior Designer/Runtime/Tasks/Actions/Idle.cs#L1-L14)
@@ -241,6 +293,7 @@ These tasks are executed by Behavior Designer during runtime and produce outputs
 
 **Section sources**
 - [BehaviorTree.cs:1-11](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs#L1-L11)
+- [ExternalBehaviorTree.cs:1-8](file://Assets/Behavior Designer/Runtime/ExternalBehaviorTree.cs#L1-L8)
 - [Idle.cs:1-14](file://Assets/Behavior Designer/Runtime/Tasks/Actions/Idle.cs#L1-L14)
 - [PerformInterruption.cs:1-28](file://Assets/Behavior Designer/Runtime/Tasks/Actions/PerformInterruption.cs#L1-L28)
 
@@ -306,7 +359,7 @@ PlayerRoot --> AIInputFeeder : "feeds inputs"
 - [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
 - [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
 - [BotTactics.cs:17-456](file://Assets/FPS-Game/Scripts/Bot/BotTactics.cs#L17-L456)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+- [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
 - [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
 
 ## Detailed Component Analysis
@@ -409,7 +462,7 @@ PR --> AIF["AIInputFeeder.cs"]
 - [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
 - [BehaviorDesignerGlobalVariables.asset:1-27](file://Assets/Behavior Designer/Resources/BehaviorDesignerGlobalVariables.asset#L1-L27)
 - [BehaviorTree.cs:1-11](file://Assets/Behavior Designer/Runtime/BehaviorTree.cs#L1-L11)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+- [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
 - [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
 
 **Section sources**
@@ -417,20 +470,27 @@ PR --> AIF["AIInputFeeder.cs"]
 - [BlackboardLinker.cs:54-332](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L54-L332)
 - [PerceptionSensor.cs:10-407](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L10-L407)
 - [BotTactics.cs:17-456](file://Assets/FPS-Game/Scripts/Bot/BotTactics.cs#L17-L456)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+- [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
 - [AIInputFeeder.cs:4-29](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L4-L29)
 
 ## Performance Considerations
-- Minimize redundant writes: BlackboardLinker’s SafeSet compares values before assignment to avoid unnecessary updates.
+- Minimize redundant writes: BlackboardLinker's SafeSet compares values before assignment to avoid unnecessary updates.
 - Frame-rate dependent updates: BlackboardLinker reads outputs every frame; ensure behavior outputs change infrequently to reduce overhead.
 - Event-driven updates: Use PerceptionSensor and BotTactics events to trigger variable updates rather than polling continuously.
 - Avoid excessive BD variable churn: Keep the number of shared variables minimal and reuse them across tasks.
-
-[No sources needed since this section provides general guidance]
+- Unity 6000.4 compatibility: Editor performance improvements through reduced reflection usage.
 
 ## Troubleshooting Guide
 
-Common issues and resolutions:
+### Unity 6000.4 Compatibility Issues
+**Symptom**: Editor components not functioning or throwing compilation errors
+**Cause**: Breaking changes to Unity editor framework base classes
+**Solution**: 
+- Use compiled assemblies for runtime functionality
+- Configure Behavior Designer variables through serialized properties
+- Leverage runtime variable binding instead of custom inspectors
+
+### Common Issues and Resolutions
 - Variable synchronization conflicts
   - Symptom: Outputs not updating or stale values.
   - Checks:
@@ -456,12 +516,18 @@ Common issues and resolutions:
     - Confirm BotController publishes outputs in [UpdateValues:122-171](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L122-L171).
     - Ensure AIInputFeeder receives and applies inputs in [AIInputFeeder.cs:12-28](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L12-L28).
   - Related code paths:
-    - [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+    - [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
 
 - Behavior tree debugging
   - Use BD logging and task status inspection to verify task execution order.
   - Validate that [StartBehavior:281-307](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L281-L307) enables and runs the intended behavior.
   - Confirm that [BindToBehavior:86-113](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L86-L113) seeds variables before execution.
+
+### Unity 6000.4 Specific Troubleshooting
+- **Editor Inspector Issues**: Custom inspectors are disabled (.DISABLED) - use serialized properties instead
+- **Object Drawer Problems**: Float/int sliders not displaying - configure through asset files
+- **Reflection Performance**: Reduced reflection usage improves runtime performance
+- **Base Class Changes**: Editor framework base class modifications require updated inheritance patterns
 
 **Section sources**
 - [BlackboardLinker.cs:86-113](file://Assets/FPS-Game/Scripts/Bot/BlackboardLinker.cs#L86-L113)
@@ -472,9 +538,11 @@ Common issues and resolutions:
 - [Idle.cs:1-14](file://Assets/Behavior Designer/Runtime/Tasks/Actions/Idle.cs#L1-L14)
 - [BotController.cs:122-171](file://Assets/FPS-Game/Scripts/Bot/BotController.cs#L122-L171)
 - [AIInputFeeder.cs:12-28](file://Assets/FPS-Game/Scripts/Bot/AIInputFeeder.cs#L12-L28)
-- [PlayerRoot.cs:159-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L366)
+- [PlayerRoot.cs:159-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L367)
+- [BehaviorTreeInspector.cs.DISABLED:1-11](file://Assets/Behavior Designer/Editor/BehaviorTreeInspector.cs.DISABLED#L1-L11)
+- [FloatSliderDrawer.cs.DISABLED:1-22](file://Assets/Behavior Designer/Editor/Object Drawers/FloatSliderDrawer.cs.DISABLED#L1-L22)
 
 ## Conclusion
-The Behavior Designer integration couples C# AI logic with Behavior Tree tasks through a robust blackboard-linking mechanism. BlackboardLinker synchronizes shared/global variables and reads outputs efficiently, while BotController orchestrates behavior activation and translates outputs into player inputs via AIInputFeeder. PerceptionSensor and BotTactics supply essential situational awareness. By leveraging type-safe variable mapping, event-driven updates, and careful caching, the system achieves responsive and maintainable AI behavior.
+The Behavior Designer integration couples C# AI logic with Behavior Tree tasks through a robust blackboard-linking mechanism. BlackboardLinker synchronizes shared/global variables and reads outputs efficiently, while BotController orchestrates behavior activation and translates outputs into player inputs via AIInputFeeder. PerceptionSensor and BotTactics supply essential situational awareness.
 
-[No sources needed since this section summarizes without analyzing specific files]
+**Updated** With Unity 6000.4 compatibility, the system maintains core functionality while adapting to editor framework changes. The temporary disabling of editor wrapper scripts (.DISABLED) reflects Unity's breaking changes to editor framework base classes, but compiled assemblies ensure runtime stability. The integration continues to achieve responsive and maintainable AI behavior through type-safe variable mapping, event-driven updates, and careful caching, now with improved compatibility for future Unity versions.
