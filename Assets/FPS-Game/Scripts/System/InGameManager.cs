@@ -81,7 +81,7 @@ public class InGameManager : NetworkBehaviour
     public TimePhaseCounter TimePhaseCounter { get; private set; }
     public KillCountChecker KillCountChecker { get; private set; }
     public GenerateHealthPickup GenerateHealthPickup { get; private set; }
-    public LobbyRelayChecker LobbyRelayChecker { get; private set; }
+    // Removed: public LobbyRelayChecker LobbyRelayChecker { get; private set; }
     public HandleSpawnBot HandleSpawnBot { get; private set; }
     public RandomSpawn RandomSpawn { get; private set; }
     public Waypoints Waypoints { get; private set; }
@@ -137,11 +137,12 @@ public class InGameManager : NetworkBehaviour
         Waypoints = GetComponent<Waypoints>();
         ZoneController = GetComponent<ZoneController>();
         
+        // Removed: Lobby/Relay checker initialization - no longer using Lobby system
         // Initialize lobby/relay checker only in multiplayer mode
-        if (gameMode == GameMode.Multiplayer)
-        {
-            LobbyRelayChecker = GetComponent<LobbyRelayChecker>();
-        }
+        // if (gameMode == GameMode.Multiplayer)
+        // {
+        //     LobbyRelayChecker = GetComponent<LobbyRelayChecker>();
+        // }
 
         OnGameEnd += () =>
         {

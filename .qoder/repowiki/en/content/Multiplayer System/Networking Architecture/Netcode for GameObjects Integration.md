@@ -12,18 +12,17 @@
 - [PlayerBehaviour.cs](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs)
 - [PlayerMovement.cs](file://Assets/FPS-Game/Scripts/PlayerMovement.cs)
 - [Relay.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs)
-- [ProjectSettings.asset](file://ProjectSettings/ProjectSettings.asset)
 - [PackageManagerSettings.asset](file://ProjectSettings/PackageManagerSettings.asset)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Updated all code examples and references to reflect Netcode for GameObjects 2.11.0 patterns
-- Added new ClientNetworkTransform integration patterns and authority-based movement
-- Enhanced RPC security patterns with RequireOwnership flags
-- Updated NetworkVariable usage patterns and state synchronization
-- Added new component-based networking architecture patterns
-- Updated troubleshooting guidance for 2.11.0 specific issues
+- Updated all code examples and references to reflect Netcode for GameObjects v2 compatibility patterns
+- Enhanced ClientNetworkTransform integration with Unity.Netcode.Components namespace
+- Updated ServerRpc RequireOwnership attribute handling for v2 deprecation
+- Revised component-based networking architecture to align with v2 namespace changes
+- Updated RPC security patterns and authority-based movement systems
+- Enhanced documentation with v2-specific troubleshooting guidance
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -38,9 +37,9 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains how Netcode for GameObjects integrates into the FPS game. It focuses on the NetworkObject inheritance pattern via NetworkBehaviour, the NetworkBehaviour lifecycle, component-based networking architecture, server-client relationships, ownership management, NetworkVariable usage for state synchronization, and the RPC system (ServerRpc and ClientRpc). Practical examples cover networked object instantiation, despawning, and state replication across clients. Serialization considerations, custom data types, and performance optimization techniques are included, along with troubleshooting guidance for desynchronization, lag compensation, and bandwidth management.
+This document explains how Netcode for GameObjects integrates into the FPS game with v2 compatibility. It focuses on the NetworkObject inheritance pattern via NetworkBehaviour, the NetworkBehaviour lifecycle, component-based networking architecture, server-client relationships, ownership management, NetworkVariable usage for state synchronization, and the RPC system (ServerRpc and ClientRpc). Practical examples cover networked object instantiation, despawning, and state replication across clients. Serialization considerations, custom data types, and performance optimization techniques are included, along with troubleshooting guidance for desynchronization, lag compensation, and bandwidth management.
 
-**Updated** Enhanced with Netcode 2.11.0 features including improved ClientNetworkTransform integration, enhanced RPC security patterns, and advanced authority-based movement systems.
+**Updated** Enhanced with Netcode v2 compatibility features including ClientNetworkTransform integration, Unity.Netcode.Components namespace usage, and ServerRpc RequireOwnership attribute deprecation handling.
 
 ## Project Structure
 The networking configuration and prefabs are centralized under ProjectSettings and Assets. The Netcode configuration points to default network prefabs, which define which prefabs are registered for network spawning. The PlayerRoot component orchestrates initialization order across multiple PlayerBehaviour components and exposes NetworkVariable-backed state. PlayerNetwork and PlayerTakeDamage are primary NetworkBehaviour implementations that demonstrate ownership checks, RPCs, and state synchronization.
@@ -50,7 +49,6 @@ graph TB
 subgraph "ProjectSettings"
 NFG["NetcodeForGameObjects.asset"]
 PM["PackageManagerSettings.asset"]
-PS["ProjectSettings.asset"]
 end
 subgraph "Assets"
 DNP["DefaultNetworkPrefabs.asset"]
@@ -81,13 +79,13 @@ PMV --> RL
 **Diagram sources**
 - [NetcodeForGameObjects.asset:1-18](file://ProjectSettings/NetcodeForGameObjects.asset#L1-L18)
 - [DefaultNetworkPrefabs.asset:1-72](file://Assets/DefaultNetworkPrefabs.asset#L1-L72)
-- [PlayerRoot.cs:159-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L217)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
 - [PlayerNetwork.cs:12-541](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L541)
 - [PlayerTakeDamage.cs:5-124](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L5-L124)
 - [PlayerShoot.cs:20-162](file://Assets/FPS-Game/Scripts/Player/PlayerShoot.cs#L20-L162)
-- [PlayerAnimation.cs:5-49](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L49)
-- [PlayerMovement.cs:5-70](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L70)
-- [Relay.cs:10-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L10-L71)
+- [PlayerAnimation.cs:5-50](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L50)
+- [PlayerMovement.cs:5-158](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L158)
+- [Relay.cs:53-72](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L53-L72)
 
 **Section sources**
 - [NetcodeForGameObjects.asset:1-18](file://ProjectSettings/NetcodeForGameObjects.asset#L1-L18)
@@ -107,16 +105,15 @@ Key lifecycle and ownership patterns:
 - NetworkVariable values propagate automatically to clients; listeners update UI and game state locally.
 - Authority-based movement ensures server validation of all player actions.
 
-**Updated** Enhanced with ClientNetworkTransform integration for smooth interpolation and authority-based movement systems.
+**Updated** Enhanced with ClientNetworkTransform integration for smooth interpolation and authority-based movement systems using Unity.Netcode.Components namespace.
 
 **Section sources**
-- [PlayerRoot.cs:159-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L217)
-- [PlayerRoot.cs:298-339](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L298-L339)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
 - [PlayerNetwork.cs:12-541](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L541)
 - [PlayerTakeDamage.cs:5-124](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L5-L124)
 - [PlayerShoot.cs:20-162](file://Assets/FPS-Game/Scripts/Player/PlayerShoot.cs#L20-L162)
-- [PlayerAnimation.cs:5-49](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L49)
-- [PlayerMovement.cs:5-70](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L70)
+- [PlayerAnimation.cs:5-50](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L50)
+- [PlayerMovement.cs:5-158](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L158)
 
 ## Architecture Overview
 The system follows a component-based networking architecture with enhanced authority patterns:
@@ -187,16 +184,15 @@ PlayerAnimation --|> PlayerBehaviour
 PlayerMovement --|> NetworkBehaviour
 ```
 
-**Updated** Added PlayerShoot and PlayerAnimation classes to represent enhanced networking patterns.
+**Updated** Added PlayerShoot and PlayerAnimation classes to represent enhanced networking patterns with v2 compatibility.
 
 **Diagram sources**
-- [PlayerRoot.cs:159-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L217)
-- [PlayerRoot.cs:298-339](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L298-L339)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
 - [PlayerNetwork.cs:12-541](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L541)
 - [PlayerTakeDamage.cs:5-124](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L5-L124)
 - [PlayerShoot.cs:20-162](file://Assets/FPS-Game/Scripts/Player/PlayerShoot.cs#L20-L162)
-- [PlayerAnimation.cs:5-49](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L49)
-- [PlayerMovement.cs:5-70](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L70)
+- [PlayerAnimation.cs:5-50](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L50)
+- [PlayerMovement.cs:5-158](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L158)
 
 ## Detailed Component Analysis
 
@@ -223,15 +219,14 @@ PR->>PTD : InitializeOnNetworkSpawn()
 Note over PR,PN : Priority-driven initialization across components
 ```
 
-**Updated** Enhanced with ClientNetworkTransform integration and improved subsystem management.
+**Updated** Enhanced with ClientNetworkTransform integration and improved subsystem management using Unity.Netcode.Components namespace.
 
 **Diagram sources**
-- [PlayerRoot.cs:214-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L214-L217)
-- [PlayerRoot.cs:332-339](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L332-L339)
+- [PlayerRoot.cs:215-218](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L215-L218)
+- [PlayerRoot.cs:333-340](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L333-L340)
 
 **Section sources**
-- [PlayerRoot.cs:159-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L217)
-- [PlayerRoot.cs:298-339](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L298-L339)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
 
 ### PlayerNetwork: Ownership, Camera, and RPCs
 PlayerNetwork demonstrates:
@@ -258,7 +253,7 @@ PN->>CL : Update playerName on target client
 Note over PN,CL : Ownership not required for this broadcast-like mapping
 ```
 
-**Updated** Enhanced with improved bot synchronization and authority-based state management.
+**Updated** Enhanced with improved bot synchronization and authority-based state management using v2 RPC patterns.
 
 **Diagram sources**
 - [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
@@ -291,7 +286,7 @@ S->>Attacker : Increment KillCount on owner
 Note over S,Attacker : Kill/Death counters synchronized via NetworkVariable
 ```
 
-**Updated** Enhanced with improved bot damage handling and authority validation.
+**Updated** Enhanced with improved bot damage handling and authority validation using v2 RPC patterns.
 
 **Diagram sources**
 - [PlayerTakeDamage.cs:58-83](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L58-L83)
@@ -322,7 +317,7 @@ Server->>Server : Damage calculation and HP update
 Note over Local,Remote : Authority ensures consistent combat results
 ```
 
-**New** Added comprehensive combat system demonstrating authority patterns.
+**New** Added comprehensive combat system demonstrating authority patterns with v2 compatibility.
 
 **Diagram sources**
 - [PlayerShoot.cs:80-146](file://Assets/FPS-Game/Scripts/Player/PlayerShoot.cs#L80-L146)
@@ -341,10 +336,10 @@ Key behaviors:
 - ClientRpc updates rig builder state without authority conflicts.
 - Animation events trigger appropriate movement callbacks.
 
-**New** Added animation synchronization patterns for enhanced visual consistency.
+**New** Added animation synchronization patterns for enhanced visual consistency using v2 RPC patterns.
 
 **Section sources**
-- [PlayerAnimation.cs:5-49](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L49)
+- [PlayerAnimation.cs:5-50](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L50)
 
 ### PlayerMovement: Authority-Based Movement
 PlayerMovement demonstrates:
@@ -357,10 +352,10 @@ Key behaviors:
 - Movement state machine with speed control and ground detection.
 - Authority validation prevents cheating through client-side movement.
 
-**New** Added authority-based movement patterns for secure gameplay.
+**New** Added authority-based movement patterns for secure gameplay with v2 ClientNetworkTransform integration.
 
 **Section sources**
-- [PlayerMovement.cs:5-70](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L70)
+- [PlayerMovement.cs:5-158](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L158)
 
 ### NetworkVariable Usage and State Replication
 - PlayerNetwork: KillCount, DeathCount, playerName.
@@ -379,13 +374,13 @@ Best practices:
 - Avoid frequent writes from clients unless ownership is required.
 - Implement authority patterns for critical gameplay elements.
 
-**Updated** Enhanced with ClientNetworkTransform integration and authority-based patterns.
+**Updated** Enhanced with ClientNetworkTransform integration and authority-based patterns using Unity.Netcode.Components namespace.
 
 **Section sources**
-- [PlayerNetwork.cs:14-18](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L14-L18)
-- [PlayerTakeDamage.cs:7-8](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L7-L8)
-- [PlayerRoot.cs:185-186](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L185-L186)
-- [PlayerMovement.cs:36-44](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L36-L44)
+- [PlayerNetwork.cs:14-16](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L14-L16)
+- [PlayerTakeDamage.cs:7](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L7)
+- [PlayerRoot.cs:186-187](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L186-L187)
+- [PlayerMovement.cs:36](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L36)
 
 ### RPC Patterns: ServerRpc and ClientRpc
 Patterns demonstrated:
@@ -404,7 +399,7 @@ Parameter passing:
 - For complex data, pass IDs and fetch objects on the server side.
 - Use ClientRpcParams for targeted broadcasting to specific clients.
 
-**Updated** Enhanced with authority patterns and improved security measures.
+**Updated** Enhanced with authority patterns and improved security measures using v2 RPC attribute handling.
 
 **Section sources**
 - [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
@@ -421,11 +416,11 @@ Practical flow:
 - NetworkManager registers prefabs from DefaultNetworkPrefabs.
 - OnNetworkSpawn, PlayerRoot initializes subsystems and applies ownership-specific logic.
 
-**Updated** Enhanced with ClientNetworkTransform integration for smooth instantiation.
+**Updated** Enhanced with ClientNetworkTransform integration for smooth instantiation using v2 namespace patterns.
 
 **Section sources**
 - [DefaultNetworkPrefabs.asset:1-72](file://Assets/DefaultNetworkPrefabs.asset#L1-L72)
-- [PlayerRoot.cs:214-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L214-L217)
+- [PlayerRoot.cs:215-218](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L215-L218)
 
 ## Dependency Analysis
 The following diagram shows how core networking components depend on each other and on Netcode primitives.
@@ -455,19 +450,19 @@ DNP --> NM
 RL --> NM
 ```
 
-**Updated** Added PlayerShoot, PlayerAnimation, and PlayerMovement dependencies.
+**Updated** Added PlayerShoot, PlayerAnimation, and PlayerMovement dependencies with v2 compatibility.
 
 **Diagram sources**
-- [PlayerRoot.cs:159-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L217)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
 - [PlayerNetwork.cs:12-541](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L541)
 - [PlayerTakeDamage.cs:5-124](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L5-L124)
 - [PlayerShoot.cs:20-162](file://Assets/FPS-Game/Scripts/Player/PlayerShoot.cs#L20-L162)
-- [PlayerAnimation.cs:5-49](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L49)
-- [PlayerMovement.cs:5-70](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L70)
-- [Relay.cs:10-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L10-L71)
+- [PlayerAnimation.cs:5-50](file://Assets/FPS-Game/Scripts/Player/PlayerAnimation.cs#L5-L50)
+- [PlayerMovement.cs:5-158](file://Assets/FPS-Game/Scripts/PlayerMovement.cs#L5-L158)
+- [Relay.cs:53-72](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L53-L72)
 
 **Section sources**
-- [PlayerRoot.cs:159-217](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L159-L217)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
 - [PlayerNetwork.cs:12-541](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L541)
 - [PlayerTakeDamage.cs:5-124](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L5-L124)
 
@@ -482,7 +477,7 @@ RL --> NM
 - Use NetworkVariable for position tracking instead of frequent RPCs.
 - Optimize raycast operations in ServerRpc methods.
 
-**Updated** Enhanced with ClientNetworkTransform and authority-based movement performance tips.
+**Updated** Enhanced with ClientNetworkTransform and authority-based movement performance tips using v2 patterns.
 
 ## Troubleshooting Guide
 Common issues and remedies:
@@ -508,19 +503,23 @@ Common issues and remedies:
 - Relay connectivity:
   - Check Unity Relay service configuration and join codes.
   - Verify NetworkManager transport settings for relay connections.
+- v2 Compatibility Issues:
+  - Ensure Unity.Netcode.Components namespace is used for ClientNetworkTransform.
+  - Update ServerRpc attributes to handle RequireOwnership deprecation warnings.
+  - Verify package versions support v2 namespace changes.
 
-**Updated** Enhanced with Netcode 2.11.0 specific troubleshooting scenarios including ClientNetworkTransform issues and authority validation problems.
+**Updated** Enhanced with Netcode v2 specific troubleshooting scenarios including ClientNetworkTransform issues, authority validation problems, and RequireOwnership attribute handling.
 
 **Section sources**
 - [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
 - [PlayerTakeDamage.cs:58-83](file://Assets/FPS-Game/Scripts/Player/PlayerTakeDamage.cs#L58-L83)
 - [DefaultNetworkPrefabs.asset:1-72](file://Assets/DefaultNetworkPrefabs.asset#L1-L72)
-- [Relay.cs:26-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L26-L71)
+- [Relay.cs:53-72](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L53-L72)
 
 ## Conclusion
-The FPS game leverages Netcode for GameObjects 2.11.0 through a clean component-based architecture with enhanced authority patterns. PlayerRoot orchestrates initialization order and subsystem references, while PlayerNetwork and PlayerTakeDamage implement ownership-aware logic, RPCs, and NetworkVariable-backed state synchronization. The new PlayerShoot and PlayerAnimation components demonstrate advanced networking patterns including authoritative combat mechanics and visual state synchronization. By following the patterns documented here—prioritizing initialization, using ServerRpc for authoritative updates, implementing ClientNetworkTransform for smooth interpolation, and carefully managing RPC scope and bandwidth—you can build a robust, scalable multiplayer experience with enhanced security and performance.
+The FPS game leverages Netcode for GameObjects v2 through a clean component-based architecture with enhanced authority patterns. PlayerRoot orchestrates initialization order and subsystem references, while PlayerNetwork and PlayerTakeDamage implement ownership-aware logic, RPCs, and NetworkVariable-backed state synchronization. The new PlayerShoot and PlayerAnimation components demonstrate advanced networking patterns including authoritative combat mechanics and visual state synchronization. By following the patterns documented here—prioritizing initialization, using ServerRpc for authoritative updates, implementing ClientNetworkTransform for smooth interpolation, and carefully managing RPC scope and bandwidth—you can build a robust, scalable multiplayer experience with enhanced security and performance using Netcode v2 compatibility features.
 
-**Updated** Enhanced conclusion reflecting Netcode 2.11.0 improvements including ClientNetworkTransform integration and authority-based patterns.
+**Updated** Enhanced conclusion reflecting Netcode v2 improvements including ClientNetworkTransform integration, Unity.Netcode.Components namespace usage, and authority-based patterns.
 
 ## Appendices
 
@@ -530,7 +529,7 @@ The FPS game leverages Netcode for GameObjects 2.11.0 through a clean component-
 - NetworkManager.prefab is the runtime anchor for the network session.
 - PackageManagerSettings.asset controls package dependencies and registry configuration.
 
-**Updated** Added PackageManagerSettings for dependency management.
+**Updated** Added PackageManagerSettings for dependency management with v2 compatibility.
 
 **Section sources**
 - [NetcodeForGameObjects.asset:1-18](file://ProjectSettings/NetcodeForGameObjects.asset#L1-L18)
@@ -543,11 +542,20 @@ The FPS game leverages Netcode for GameObjects 2.11.0 through a clean component-
 - ClientNetworkTransform provides smooth interpolation without authority conflicts.
 - NetworkVariable updates ensure consistent state across all clients.
 
-**New** Added comprehensive authority and security patterns for Netcode 2.11.0.
+**New** Added comprehensive authority and security patterns for Netcode v2.
 
 ### Appendix C: ClientNetworkTransform Integration
-- Smooth client-side prediction for non-authority objects.
+- Smooth client-side prediction for non-authority objects using Unity.Netcode.Components namespace.
 - Interpolation settings for different movement types.
 - Authority-based teleportation with interpolation control.
+- v2 namespace compatibility for ClientNetworkTransform components.
 
-**New** Added ClientNetworkTransform integration patterns for enhanced networking.
+**New** Added ClientNetworkTransform integration patterns for enhanced networking with v2 compatibility.
+
+### Appendix D: v2 Migration Guide
+- Unity.Netcode.Components namespace for ClientNetworkTransform.
+- ServerRpc RequireOwnership attribute deprecation handling.
+- Updated package dependencies and registry configuration.
+- Backward compatibility considerations for legacy code.
+
+**New** Added comprehensive v2 migration guidance for Netcode upgrade.

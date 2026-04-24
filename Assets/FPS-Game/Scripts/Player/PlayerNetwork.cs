@@ -1,8 +1,8 @@
 using Cinemachine;
 using Unity.Netcode;
 using UnityEngine;
-using Unity.Services.Lobbies.Models;
-using Unity.Services.Authentication;
+// Removed: using Unity.Services.Lobbies.Models;
+// Removed: using Unity.Services.Authentication;
 using System.Collections.Generic;
 using System;
 using System.Collections;
@@ -35,7 +35,8 @@ public class PlayerNetwork : PlayerBehaviour
             EnableScripts();
             if (!PlayerRoot.IsCharacterBot())
             {
-                MappingValues_ServerRpc(AuthenticationService.Instance.PlayerId, OwnerClientId);
+                // Removed: Authentication-based player name mapping
+                MappingValues_ServerRpc($"Player_{OwnerClientId}", OwnerClientId);
                 PlayerRoot.PlayerModel.ChangeModelVisibility(false);
 
                 gameObject.name += " Local";
@@ -180,21 +181,16 @@ public class PlayerNetwork : PlayerBehaviour
         }
     }
 
+    // Simplified: No longer uses Lobby system
     [ServerRpc(RequireOwnership = false)]
     public void MappingValues_ServerRpc(string playerID, ulong targetClientId)
     {
-        Lobby lobby = LobbyManager.Instance.GetJoinedLobby();
-        foreach (Player player in lobby.Players)
+        // Direct assignment without Lobby lookup
+        var targetPlayer = NetworkManager.Singleton.ConnectedClients[targetClientId].PlayerObject;
+        if (targetPlayer.TryGetComponent<PlayerNetwork>(out var playerNetwork))
         {
-            if (player.Id == playerID)
-            {
-                var targetPlayer = NetworkManager.Singleton.ConnectedClients[targetClientId].PlayerObject;
-                if (targetPlayer.TryGetComponent<PlayerNetwork>(out var playerNetwork))
-                {
-                    playerNetwork.playerName = player.Data[LobbyManager.KEY_PLAYER_NAME].Value;
-                    return;
-                }
-            }
+            playerNetwork.playerName = playerID;
+            Debug.Log($"[PlayerNetwork] Set player name: {playerID}");
         }
     }
 
