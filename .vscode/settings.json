@@ -61,7 +61,7 @@
         "Cache/": true,
         "Libraries/": true
     },
-    "dotnet.defaultSolution": "FPS-Game.sln",
+    "dotnet.defaultSolution": "FPS-Game-20260423.slnx",
     "workbench.colorTheme": "Default Dark Modern",
     "editor.semanticTokenColorCustomizations": {
         "rules": {

@@ -1,4 +1,5 @@
-using QFSW.QC;
+// Requires Quantum Console package - commenting out for now
+// using QFSW.QC;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Networking.Transport.Relay;
@@ -23,7 +24,7 @@ public class Relay : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    [Command]
+    // [Command] // Requires Quantum Console
     public async Task<string> CreateRelay(int playerNum)
     {
         try
@@ -49,7 +50,7 @@ public class Relay : MonoBehaviour
         }
     }
 
-    [Command]
+    // [Command] // Requires Quantum Console
     public async void JoinRelay(string joinCode)
     {
         try

@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using Mono.CSharp;
+// using Mono.CSharp; // Deprecated - removed in .NET Core
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;

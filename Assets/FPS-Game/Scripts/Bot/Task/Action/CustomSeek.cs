@@ -2,7 +2,7 @@ using UnityEngine;
 using BehaviorDesigner.Runtime;
 using BehaviorDesigner.Runtime.Tasks;
 using TooltipAttribute = BehaviorDesigner.Runtime.Tasks.TooltipAttribute;
-using BehaviorDesigner.Runtime.Tasks.Movement;
+// using BehaviorDesigner.Runtime.Tasks.Movement; // Requires Behavior Designer Movement package
 using UnityEngine.AI;
 using AIBot;
 

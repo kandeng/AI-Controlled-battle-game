@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
+// using Unity.Multiplayer.Samples.Utilities.ClientAuthority; // Package removed
 using Unity.Netcode;
+using Unity.Netcode.Components; // For ClientNetworkTransform
 using UnityEngine;
 
 public class Explosives : PlayerBehaviour

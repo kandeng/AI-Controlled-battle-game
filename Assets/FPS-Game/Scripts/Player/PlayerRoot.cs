@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using AIBot;
-using Mono.CSharp;
+// using Mono.CSharp; // Deprecated - removed in .NET Core
 using PlayerAssets;
 using Unity.Collections;
-using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
+// using Unity.Multiplayer.Samples.Utilities.ClientAuthority; // Package removed
 using Unity.Netcode;
+using Unity.Netcode.Components; // For ClientNetworkTransform
 using UnityEngine;
 using UnityEngine.InputSystem;
 
