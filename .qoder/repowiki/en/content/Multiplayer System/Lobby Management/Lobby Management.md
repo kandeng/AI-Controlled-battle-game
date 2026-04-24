@@ -2,327 +2,170 @@
 
 <cite>
 **Referenced Files in This Document**
-- [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
-- [LobbyCreateUI.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyCreateUI.cs)
-- [LobbyListUI.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs)
-- [LobbyListSingleUI.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListSingleUI.cs)
-- [LobbyUI.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyUI.cs)
-- [SlotManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotManager.cs)
-- [SlotPlayer.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotPlayer.cs)
-- [EditPlayerName.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/EditPlayerName.cs)
-- [AuthenticateUI.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs)
-- [Relay.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs)
-- [LobbyRelayChecker.cs](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs)
+- [LobbyManager.prefab](file://Assets/FPS-Game/Prefabs/System/LobbyManager.prefab)
+- [PlayerNetwork.cs](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs)
+- [HandleSpawnBot.cs](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs)
+- [PlayerUI.cs](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs)
+- [EscapeUI.cs](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs)
+- [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Complete removal of Unity Services ecosystem integration
+- Elimination of all lobby management scripts and UI components
+- Migration from Unity Gaming Services to simplified networking approach
+- Removal of lobby data structures, authentication, and relay systems
+- Retention of minimal lobby infrastructure for compatibility
 
 ## Table of Contents
 1. [Introduction](#introduction)
-2. [Project Structure](#project-structure)
-3. [Core Components](#core-components)
-4. [Architecture Overview](#architecture-overview)
-5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+2. [Current State Assessment](#current-state-assessment)
+3. [Legacy Infrastructure Analysis](#legacy-infrastructure-analysis)
+4. [Simplified Networking Architecture](#simplified-networking-architecture)
+5. [Remaining Components](#remaining-components)
+6. [Migration Impact](#migration-impact)
+7. [Troubleshooting Guide](#troubleshooting-guide)
+8. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the lobby management system integrated with Unity Gaming Services in the project. It covers player authentication via Unity Authentication Service, lobby lifecycle (creation, joining, updates, polling), and the integration with Unity Relay for hosting and joining matches. It also documents the lobby data model, heartbeat and polling mechanisms, and practical workflows such as managing bots, host controls, and cleanup procedures.
+This document addresses the complete removal of Unity Services ecosystem from the lobby management system. The Assets/FPS-Game/Scripts/Lobby Script/ directory containing 20+ files including LobbyManager.cs, LobbyCreateUI.cs, LobbyListUI.cs, AuthenticateUI.cs, and Relay.cs has been eliminated. The documentation now reflects a simplified networking approach that maintains basic lobby functionality while removing all Unity Gaming Services dependencies.
 
-## Project Structure
-The lobby system is implemented under Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts and integrates with Unity Services (Authentication, Lobbies, Relay) and Netcode for GameObjects (Netcode). UI components manage user actions and display lobby state.
+## Current State Assessment
+The lobby management system has undergone a complete architectural transformation. All Unity Services integration has been removed, leaving only legacy references and minimal infrastructure for backward compatibility. The system now operates as a simplified networking solution without external service dependencies.
+
+**Section sources**
+- [LobbyManager.prefab:1-47](file://Assets/FPS-Game/Prefabs/System/LobbyManager.prefab#L1-L47)
+- [PlayerNetwork.cs:180-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L180-L195)
+- [PlayerNetwork.cs:505-524](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L505-L524)
+
+## Legacy Infrastructure Analysis
+The remaining infrastructure consists primarily of legacy references and minimal components that previously supported Unity Services integration. These components are largely non-functional but maintained for compatibility.
+
+### Legacy References in Core Systems
+- **PlayerNetwork.cs**: Contains commented-out Unity Services code and simplified networking logic
+- **HandleSpawnBot.cs**: References LobbyManager but lacks functional implementation
+- **PlayerUI.cs**: Still attempts to call LobbyManager methods despite removal
+- **EscapeUI.cs**: Continues to check for lobby host privileges
+
+**Section sources**
+- [PlayerNetwork.cs:220-226](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L220-L226)
+- [PlayerNetwork.cs:508-524](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L508-L524)
+- [HandleSpawnBot.cs:30-36](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs#L30-L36)
+- [PlayerUI.cs:134](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L134)
+
+## Simplified Networking Architecture
+The system has migrated to a simplified networking approach that operates independently of Unity Services. The new architecture focuses on direct networking without external service dependencies.
+
+### Game Mode Evolution
+The project now supports three distinct operational modes:
+- **Multiplayer**: Traditional Unity Services integration (legacy)
+- **WebSocketAgent**: Direct AI agent control without networking services
+- **SinglePlayer**: Local testing mode
 
 ```mermaid
 graph TB
-subgraph "Lobby UI Layer"
-ACL["AuthenticateUI.cs"]
-LLI["LobbyListUI.cs"]
-LLS["LobbyListSingleUI.cs"]
-LCU["LobbyCreateUI.cs"]
-LU["LobbyUI.cs"]
-SM["SlotManager.cs"]
-SP["SlotPlayer.cs"]
-EPN["EditPlayerName.cs"]
+subgraph "Legacy Multiplayer Mode"
+LM["LobbyManager (Legacy)"]
+US["Unity Services"]
 end
-subgraph "Lobby Core"
-LM["LobbyManager.cs"]
-REL["Relay.cs"]
-LRC["LobbyRelayChecker.cs"]
+subgraph "WebSocket Agent Mode"
+WS["WebSocket Server"]
+AI["AI Agents"]
 end
-ACL --> LM
-LLI --> LM
-LCU --> LM
-LU --> LM
-SM --> LM
-SP --> LM
-EPN --> LM
-LM --> REL
-LM --> LRC
-```
-
-**Diagram sources**
-- [AuthenticateUI.cs:1-20](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L1-L20)
-- [LobbyListUI.cs:1-191](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs#L1-L191)
-- [LobbyListSingleUI.cs:1-33](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListSingleUI.cs#L1-L33)
-- [LobbyCreateUI.cs:1-152](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyCreateUI.cs#L1-L152)
-- [LobbyUI.cs:1-180](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyUI.cs#L1-L180)
-- [SlotManager.cs:1-136](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotManager.cs#L1-L136)
-- [SlotPlayer.cs:1-59](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotPlayer.cs#L1-L59)
-- [EditPlayerName.cs:1-47](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/EditPlayerName.cs#L1-L47)
-- [LobbyManager.cs:1-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L1-L589)
-- [Relay.cs:1-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L1-L71)
-- [LobbyRelayChecker.cs:1-63](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L1-L63)
-
-**Section sources**
-- [LobbyManager.cs:13-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L13-L71)
-- [LobbyListUI.cs:10-59](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs#L10-L59)
-- [LobbyCreateUI.cs:7-51](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyCreateUI.cs#L7-L51)
-- [LobbyUI.cs:6-86](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyUI.cs#L6-L86)
-- [SlotManager.cs:7-52](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotManager.cs#L7-L52)
-- [SlotPlayer.cs:8-59](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotPlayer.cs#L8-L59)
-- [EditPlayerName.cs:6-47](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/EditPlayerName.cs#L6-L47)
-- [AuthenticateUI.cs:5-20](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L5-L20)
-- [Relay.cs:10-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L10-L71)
-- [LobbyRelayChecker.cs:8-63](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L8-L63)
-
-## Core Components
-- LobbyManager: Central orchestrator for authentication, lobby CRUD, polling, heartbeat, and game start signaling via Unity Services. Maintains joined lobby state and exposes events for UI updates.
-- UI Components: AuthenticateUI, LobbyListUI, LobbyCreateUI, LobbyUI, SlotManager, SlotPlayer, EditPlayerName coordinate user actions and render lobby state.
-- Relay Integration: Relay creates and joins Relay allocations and configures Netcode transport; LobbyRelayChecker monitors connection parity between lobby and Netcode clients.
-
-Key data model keys used:
-- Player name: stored per-player with public visibility
-- Character selection: reserved for future use
-- Start game flag: member-visible value carrying the Relay join code when started
-- Bot number: public count of AI players added to the lobby
-
-**Section sources**
-- [LobbyManager.cs:17-21](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L17-L21)
-- [LobbyManager.cs:207-240](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L207-L240)
-- [LobbyManager.cs:264-286](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L264-L286)
-- [LobbyManager.cs:321-354](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L321-L354)
-- [LobbyManager.cs:394-436](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L394-L436)
-- [LobbyManager.cs:507-520](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L507-L520)
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:571-588](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L571-L588)
-
-## Architecture Overview
-The system follows a publish-subscribe pattern between LobbyManager and UI components. UI triggers actions; LobbyManager invokes Unity Services APIs and raises events for UI updates. Relay is used to host or join matches after the host starts the game.
-
-```mermaid
-sequenceDiagram
-participant User as "Player"
-participant AuthUI as "AuthenticateUI.cs"
-participant LM as "LobbyManager.cs"
-participant Auth as "Unity Authentication"
-participant Lobbies as "Unity Lobbies"
-participant Relay as "Relay.cs"
-User->>AuthUI : Click "Sign In"
-AuthUI->>LM : Authenticate(name)
-LM->>Auth : Initialize + SignInAnonymously
-Auth-->>LM : SignedIn event
-LM->>LM : RefreshLobbyList()
-LM->>Lobbies : QueryLobbiesAsync()
-Lobbies-->>LM : List<Lobby>
-LM-->>AuthUI : OnLobbyListChanged event
-```
-
-**Diagram sources**
-- [AuthenticateUI.cs:9-18](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L9-L18)
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:288-319](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L288-L319)
-
-## Detailed Component Analysis
-
-### LobbyManager: Authentication, Creation, Joining, Polling, Heartbeat, Relay Start
-- Authentication: Initializes Unity Services with a profile and signs in anonymously. On sign-in, triggers lobby list refresh.
-- Lobby Lifecycle:
-  - Create: Builds a Player object with per-player data and optional private flag; sets initial lobby data (start flag and bot count).
-  - Join: By code or by ID; loads the lobby room scene.
-  - Update: Player name and bot number updates are applied to the joined lobby.
-  - Leave/Kick: Removes the local player or kicks another player if host.
-  - Start Game: Host creates a Relay allocation, stores the join code in the start flag, and signals clients to join.
-- Polling and Heartbeat:
-  - Polling: Periodically fetches the joined lobby to detect kicks, updates, and start signal.
-  - Heartbeat: Host pings the lobby periodically to keep it alive.
-- Events: Exposes OnJoinedLobby, OnJoinedLobbyUpdate, OnKickedFromLobby, OnGameStarted, OnLobbyListChanged.
-
-```mermaid
-classDiagram
-class LobbyManager {
-+string GetPlayerName()
-+int GetBotNum()
-+void Authenticate(name)
-+void CreateLobby(name, maxPlayers, isPrivate)
-+void JoinLobbyByCode(code)
-+void JoinLobby(lobby)
-+void UpdatePlayerName(name)
-+void UpdateBotNumLobby(num)
-+void LeaveLobby()
-+void KickPlayer(playerId)
-+void StartGame()
-+void ExitGame()
-+bool IsLobbyHost()
-+Lobby GetJoinedLobby()
-+string GetJoinedLobbyCode()
-+event OnJoinedLobby
-+event OnJoinedLobbyUpdate
-+event OnKickedFromLobby
-+event OnGameStarted
-+event OnLobbyListChanged
-}
-```
-
-**Diagram sources**
-- [LobbyManager.cs:13-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L13-L589)
-
-**Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:264-286](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L264-L286)
-- [LobbyManager.cs:321-354](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L321-L354)
-- [LobbyManager.cs:356-392](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L356-L392)
-- [LobbyManager.cs:394-436](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L394-L436)
-- [LobbyManager.cs:485-505](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L485-L505)
-- [LobbyManager.cs:507-520](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L507-L520)
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:571-588](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L571-L588)
-- [LobbyManager.cs:122-136](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L122-L136)
-- [LobbyManager.cs:138-205](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L138-L205)
-
-### UI Components: LobbyListUI, LobbyCreateUI, LobbyUI, SlotManager, SlotPlayer, EditPlayerName
-- AuthenticateUI: Triggers authentication and navigates to the lobby list scene.
-- LobbyListUI: Renders a paginated list of open lobbies, supports refresh and join-by-code.
-- LobbyCreateUI: Collects lobby name, max players, and privacy; delegates creation to LobbyManager.
-- LobbyUI: Displays lobby info, host-only start button, and host-only bot controls.
-- SlotManager: Populates player slots, respects host privileges, and renders bots.
-- SlotPlayer: Displays player name and optionally enables kick button for host.
-- EditPlayerName: Updates the player’s name locally and syncs to the lobby.
-
-```mermaid
-sequenceDiagram
-participant User as "Player"
-participant LLI as "LobbyListUI.cs"
-participant LM as "LobbyManager.cs"
-participant LLS as "LobbyListSingleUI.cs"
-participant LU as "LobbyUI.cs"
-User->>LLI : Click "Refresh"
-LLI->>LM : RefreshLobbyList()
-LM-->>LLI : OnLobbyListChanged(list)
-loop For each lobby
-LLI->>LLS : UpdateLobby(lobby)
+subgraph "Single Player Mode"
+SP["Local Testing"]
 end
-User->>LLS : Click "Join"
-LLS->>LM : JoinLobby(lobby)
-LM-->>LU : OnJoinedLobby(event)
+LM --> US
+WS --> AI
 ```
 
 **Diagram sources**
-- [LobbyListUI.cs:32-74](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs#L32-L74)
-- [LobbyListSingleUI.cs:18-32](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListSingleUI.cs#L18-L32)
-- [LobbyManager.cs:288-319](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L288-L319)
-- [LobbyManager.cs:342-354](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L342-L354)
+- [GameMode.cs:6-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L20)
 
 **Section sources**
-- [AuthenticateUI.cs:9-18](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L9-L18)
-- [LobbyListUI.cs:26-110](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs#L26-L110)
-- [LobbyCreateUI.cs:35-102](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyCreateUI.cs#L35-L102)
-- [LobbyUI.cs:29-114](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyUI.cs#L29-L114)
-- [SlotManager.cs:54-100](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotManager.cs#L54-L100)
-- [SlotPlayer.cs:34-59](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotPlayer.cs#L34-L59)
-- [EditPlayerName.cs:35-47](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/EditPlayerName.cs#L35-L47)
+- [GameMode.cs:6-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L6-L20)
 
-### Relay Integration: Hosting and Joining Matches
-- Host flow: LobbyManager.StartGame creates a Relay allocation, stores the join code in the lobby’s start flag, and starts the host in Netcode.
-- Client flow: When the lobby’s start flag is set, clients load the play scene and join the Relay using the stored code.
-- Connection verification: LobbyRelayChecker periodically compares the number of Netcode-connected clients against the lobby’s player count to signal readiness.
+## Remaining Components
+Despite the complete removal of Unity Services, several components remain for compatibility purposes:
 
-```mermaid
-sequenceDiagram
-participant Host as "Host Client"
-participant LM as "LobbyManager.cs"
-participant REL as "Relay.cs"
-participant Lobbies as "Unity Lobbies"
-participant Clients as "Other Clients"
-Host->>LM : StartGame()
-LM->>REL : CreateRelay(playerCount)
-REL-->>LM : joinCode
-LM->>Lobbies : UpdateLobby(startFlag=joinCode)
-LM-->>Host : OnGameStarted
-Clients->>LM : Polling detects start flag
-LM-->>Clients : Load Play Scene + Join Relay
-```
+### Minimal Infrastructure
+- **LobbyManager.prefab**: Empty prefab with LobbyManager component reference
+- **Legacy Method Calls**: PlayerUI and EscapeUI continue to reference LobbyManager methods
+- **Commented Code**: PlayerNetwork contains preserved Unity Services integration code
 
-**Diagram sources**
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [Relay.cs:27-50](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L27-L50)
-- [LobbyManager.cs:167-182](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L167-L182)
+### Functional Limitations
+- All LobbyManager methods are non-operational
+- Player host detection returns default values
+- Lobby data structures are inaccessible
+- Relay functionality is completely disabled
 
 **Section sources**
-- [Relay.cs:27-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L27-L71)
-- [LobbyRelayChecker.cs:19-61](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L61)
-- [LobbyManager.cs:167-182](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L167-L182)
+- [LobbyManager.prefab:35-46](file://Assets/FPS-Game/Prefabs/System/LobbyManager.prefab#L35-L46)
+- [PlayerUI.cs:10-11](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs#L10-L11)
+- [PlayerNetwork.cs:220-226](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L220-L226)
 
-## Dependency Analysis
-- UI depends on LobbyManager events and methods for rendering and actions.
-- LobbyManager depends on Unity Services SDKs (Authentication, Lobbies, Relay).
-- Relay depends on Netcode transport configuration.
-- SlotManager coordinates UI slots with lobby state and host permissions.
+## Migration Impact
+The complete removal of Unity Services has significant implications for the lobby management system:
 
-```mermaid
-graph LR
-LM["LobbyManager.cs"] --> AUTH["Unity Authentication"]
-LM --> LOBB["Unity Lobbies"]
-LM --> REL["Relay.cs"]
-LM --> NET["Netcode Transport"]
-LLI["LobbyListUI.cs"] --> LM
-LCU["LobbyCreateUI.cs"] --> LM
-LU["LobbyUI.cs"] --> LM
-SM["SlotManager.cs"] --> LM
-SP["SlotPlayer.cs"] --> LM
-LRC["LobbyRelayChecker.cs"] --> LOBB
-LRC --> NET
-```
+### Immediate Effects
+- **Authentication**: No longer supports Unity Authentication Service
+- **Lobby Operations**: Cannot create, join, or manage lobbies
+- **Relay Integration**: Disabled for hosting and joining matches
+- **Player Data**: Cannot store or retrieve lobby-specific player information
 
-**Diagram sources**
-- [LobbyManager.cs:5-11](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L5-L11)
-- [LobbyListUI.cs:1-9](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs#L1-L9)
-- [LobbyCreateUI.cs:1-6](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyCreateUI.cs#L1-L6)
-- [LobbyUI.cs:1-5](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyUI.cs#L1-L5)
-- [SlotManager.cs:1-5](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotManager.cs#L1-L5)
-- [SlotPlayer.cs:1-7](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotPlayer.cs#L1-L7)
-- [LobbyRelayChecker.cs:1-6](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L1-L6)
-- [Relay.cs:1-8](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L1-L8)
+### Long-term Benefits
+- **Reduced Dependencies**: Eliminates external service requirements
+- **Simplified Maintenance**: Fewer integration points to maintain
+- **Improved Reliability**: Less complex networking architecture
+- **Cost Reduction**: No subscription fees for external services
+
+### Compatibility Considerations
+- **Code References**: Legacy code continues to reference removed functionality
+- **UI Components**: Interface elements expect lobby functionality
+- **Event Handling**: Some events may trigger without effect
+- **Debug Logging**: Error messages indicate missing lobby infrastructure
 
 **Section sources**
-- [LobbyManager.cs:5-11](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L5-L11)
-- [LobbyListUI.cs:1-9](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyListUI.cs#L1-L9)
-- [SlotManager.cs:1-5](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/SlotManager.cs#L1-L5)
-
-## Performance Considerations
-- Polling interval: The lobby polling timer is tuned to balance responsiveness and API cost. Adjusting the polling interval can reduce network overhead.
-- Heartbeat: Host heartbeat keeps the lobby alive without heavy operations; ensure intervals align with expected idle durations.
-- Refresh list: Automatic refresh is throttled; consider disabling or adjusting based on UX needs.
-- UI updates: Batch UI updates when many players change at once to minimize layout recalculations.
-
-[No sources needed since this section provides general guidance]
+- [PlayerNetwork.cs:183-184](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L184)
+- [HandleSpawnBot.cs:30-33](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs#L30-L33)
 
 ## Troubleshooting Guide
-Common exceptions and symptoms:
-- Private lobby inaccessible: When polling detects a private lobby restriction, the system redirects to the lobby list and clears the joined lobby state.
-- Null lobby access: Defensive checks prevent null-reference errors during polling; ensure the joined lobby is validated before use.
-- Connectivity issues with Relay: Relay operations log exceptions; verify allocation capacity and join code validity.
+Given the simplified architecture, common issues and their resolutions:
 
-Recommended steps:
-- Verify Unity Services initialization and authentication state before performing lobby operations.
-- Confirm lobby filters and ordering match expectations when refreshing the lobby list.
-- Ensure the host has sufficient capacity for Relay allocations before starting the game.
-- Monitor logs for Unity Services exceptions and handle gracefully by informing the user and offering retry options.
+### Common Issues and Solutions
+
+#### Null Reference Exceptions
+**Symptom**: Errors indicating LobbyManager.Instance is null
+**Cause**: Legacy code attempting to access removed functionality
+**Solution**: Review code for LobbyManager references and remove or replace them
+
+#### Host Privilege Checks Fail
+**Symptom**: EscapeUI buttons not appearing for legitimate hosts
+**Cause**: LobbyManager methods return default values in non-operative state
+**Solution**: Implement custom host detection logic or disable host-only features
+
+#### Bot Spawning Issues
+**Symptom**: Bots not spawning despite configured counts
+**Cause**: HandleSpawnBot relies on LobbyManager for bot count
+**Solution**: Replace with direct bot count configuration or implement custom logic
+
+#### Networking Problems
+**Symptom**: Players cannot connect or communicate
+**Cause**: Unity Services dependencies removed
+**Solution**: Ensure proper Netcode for GameObjects setup and configuration
+
+### Diagnostic Steps
+1. **Verify Game Mode**: Confirm operating mode in GameMode.cs
+2. **Check References**: Audit code for remaining LobbyManager calls
+3. **Test Connectivity**: Validate Netcode for GameObjects setup
+4. **Review Logs**: Monitor for Unity Services error messages
+5. **Update UI**: Modify interfaces to work without lobby functionality
 
 **Section sources**
-- [LobbyManager.cs:186-204](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L186-L204)
-- [LobbyManager.cs:315-318](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L315-L318)
-- [Relay.cs:45-49](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L45-L49)
-- [LobbyRelayChecker.cs:57-61](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L57-L61)
+- [HandleSpawnBot.cs:30-33](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs#L30-L33)
+- [PlayerUI.cs:134](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L134)
+- [EscapeUI.cs:10-11](file://Assets/FPS-Game/Scripts/Player/PlayerCanvas/EscapeUI.cs#L10-L11)
 
 ## Conclusion
-The lobby management system integrates Unity Authentication, Lobbies, and Relay to provide a robust foundation for matchmaking and gameplay orchestration. It offers clear workflows for creating and joining lobbies, managing player lists, and coordinating game starts. The polling and heartbeat mechanisms ensure reliability, while UI components deliver a responsive player experience. Following the troubleshooting guidance helps maintain stability under various network conditions.
+The lobby management system has successfully transitioned from a Unity Services-dependent architecture to a simplified networking solution. While this removes advanced features like lobby management, authentication, and relay hosting, it significantly reduces complexity and dependencies. The remaining infrastructure serves as compatibility layers while the core functionality operates independently. This migration enables improved reliability, reduced maintenance overhead, and elimination of external service costs, though it requires adaptation of existing workflows and UI components.

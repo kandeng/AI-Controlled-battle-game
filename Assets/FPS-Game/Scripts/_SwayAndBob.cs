@@ -26,7 +26,7 @@ public class _SwayAndBob : MonoBehaviour
         Sway();
         SwayRotation();
 
-        speedCurve += Time.deltaTime * rb.velocity.magnitude * 1.5f + 0.01f;
+        speedCurve += Time.deltaTime * rb.linearVelocity.magnitude * 1.5f + 0.01f;
 
         BobOffset();
         //BobRotation();
@@ -77,7 +77,7 @@ public class _SwayAndBob : MonoBehaviour
     private void BobOffset()
     {
         bobPosition.x = curveCos * bobLimit.x;
-        bobPosition.y = curveSin * bobLimit.y - rb.velocity.y * travelLimit.y;
+        bobPosition.y = curveSin * bobLimit.y - rb.linearVelocity.y * travelLimit.y;
         bobPosition.z = -walkInput.y * travelLimit.z;
 
         //bobPosition.x = curveCos * bobLimit.x;

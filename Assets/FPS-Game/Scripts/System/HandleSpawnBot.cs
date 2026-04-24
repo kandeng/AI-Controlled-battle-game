@@ -27,14 +27,11 @@ public class HandleSpawnBot : NetworkBehaviour
     void SpawnAllBots()
     {
         if (!IsServer) return;
-        if (LobbyManager.Instance == null)
-        {
-            Debug.Log("LobbyManager.Instance == null");
-            return;
-        }
-
-        int botCount = LobbyManager.Instance.GetBotNum();
-        Debug.Log(LobbyManager.Instance.GetBotNum());
+        
+        // Fixed: Removed LobbyManager dependency - use default bot count
+        int botCount = 4; // Default: spawn 4 bots
+        Debug.Log($"[HandleSpawnBot] Spawning {botCount} bots");
+        
         List<string> listID = GenerateUnique4DigitIDs(botCount);
         for (int i = 0; i < botCount; i++)
         {

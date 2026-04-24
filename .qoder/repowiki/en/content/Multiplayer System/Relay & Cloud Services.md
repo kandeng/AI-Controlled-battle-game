@@ -3,13 +3,25 @@
 <cite>
 **Referenced Files in This Document**
 - [README.md](file://README.md)
-- [Relay.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs)
-- [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
-- [LobbyRelayChecker.cs](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs)
+- [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
+- [TimePhaseCounter.cs](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs)
 - [PlayerNetwork.cs](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs)
 - [PlayerRoot.cs](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs)
 - [PlayerBehaviour.cs](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs)
+- [WebSocketServerManager.cs](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs)
+- [AgentWebSocketHandler.cs](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs)
+- [WebSocketDataStructures.cs](file://Assets/FPS-Game/Scripts/System/WebSocketDataStructures.cs)
+- [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Complete removal of Unity Services infrastructure (Lobby, Relay, Authentication) documentation
+- Replacement of multi-stage connection flow with direct peer-to-peer connections
+- Addition of WebSocket agent mode for AI-controlled agents
+- Updated architecture to reflect immediate countdowns and direct IP-based connections
+- Removal of lobby and relay checker components
+- Simplified player name mapping without authentication dependency
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -24,242 +36,232 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the Unity Gaming Services integration for Relay and cloud-based matchmaking in the project. It covers how the lobby system coordinates with Unity Relay to create and join sessions, how relay codes are generated and shared, and how peers connect via Unity Transport over Relay. It also documents Unity Services initialization, authentication, and service configuration requirements, along with practical examples for creating relay rooms, joining existing sessions, handling failures, and strategies for NAT traversal and connection quality under varying network conditions.
+This document explains the Unity Gaming Services integration for Relay and cloud-based matchmaking in the project. **Updated**: The project has completely removed Unity Services infrastructure including Unity Lobby Service, Unity Relay Service, and Unity Authentication Service. The traditional multi-stage connection flow ('Auth → Lobby → Relay → NGO') has been replaced with direct peer-to-peer connections. The system now supports three operational modes: Multiplayer (direct networking), WebSocket Agent (AI-controlled agents), and Single Player (local testing). Documentation reflects the simplified architecture with immediate countdowns and direct IP-based connections.
 
 ## Project Structure
-The networking and matchmaking logic is primarily implemented in three areas:
-- Lobby orchestration and matchmaking: [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
-- Relay allocation, join code generation, and transport configuration: [Relay.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs)
-- Session readiness verification and event signaling: [LobbyRelayChecker.cs](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs)
-- Player-side network synchronization and lobby-aware behaviors: [PlayerNetwork.cs](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs), [PlayerRoot.cs](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs), [PlayerBehaviour.cs](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs)
+The networking and matchmaking logic is now implemented across three main operational modes:
+- **Multiplayer Mode**: Direct peer-to-peer connections using Unity Netcode
+- **WebSocket Agent Mode**: AI agent control via WebSocket connections
+- **Single Player Mode**: Local testing without networking services
+
+Core networking components:
+- Game mode management and initialization: [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
+- Countdown and phase management: [TimePhaseCounter.cs](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs)
+- Player synchronization and identity mapping: [PlayerNetwork.cs](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs), [PlayerRoot.cs](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs), [PlayerBehaviour.cs](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs)
+- WebSocket server infrastructure: [WebSocketServerManager.cs](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs), [AgentWebSocketHandler.cs](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs), [WebSocketDataStructures.cs](file://Assets/FPS-Game/Scripts/System/WebSocketDataStructures.cs)
+- Game mode enumeration: [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
 
 ```mermaid
 graph TB
-subgraph "Lobby Layer"
-LM["LobbyManager.cs"]
-LR["LobbyRelayChecker.cs"]
+subgraph "Game Modes"
+IM["InGameManager.cs"]
+GM["GameMode.cs"]
 end
-subgraph "Relay Layer"
-R["Relay.cs"]
-end
-subgraph "Networking Layer"
-NT["Unity Transport (NGO)"]
-PM["PlayerNetwork.cs"]
+subgraph "Direct Networking Layer"
+TPC["TimePhaseCounter.cs"]
+PN["PlayerNetwork.cs"]
 PB["PlayerBehaviour.cs"]
 PR["PlayerRoot.cs"]
 end
-LM --> R
-LM --> LR
-R --> NT
-LR --> LM
-PM --> NT
-PB --> PM
+subgraph "WebSocket Agent Layer"
+WSM["WebSocketServerManager.cs"]
+AWH["AgentWebSocketHandler.cs"]
+WDS["WebSocketDataStructures.cs"]
+end
+IM --> TPC
+IM --> PN
+IM --> GM
+PN --> PR
+PB --> PN
 PR --> PB
+WSM --> AWH
+WSM --> WDS
 ```
 
 **Diagram sources**
-- [LobbyManager.cs:1-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L1-L589)
-- [Relay.cs:1-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L1-L71)
-- [LobbyRelayChecker.cs:1-63](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L1-L63)
-- [PlayerNetwork.cs:1-432](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L432)
-- [PlayerRoot.cs:323-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L323-L366)
+- [InGameManager.cs:1-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L1-L295)
+- [TimePhaseCounter.cs:1-110](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L1-L110)
+- [PlayerNetwork.cs:1-537](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L537)
+- [PlayerRoot.cs:1-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L367)
 - [PlayerBehaviour.cs:1-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L1-L31)
+- [WebSocketServerManager.cs:1-200](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L1-L200)
+- [AgentWebSocketHandler.cs:1-51](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L1-L51)
+- [WebSocketDataStructures.cs:1-100](file://Assets/FPS-Game/Scripts/System/WebSocketDataStructures.cs#L1-L100)
+- [GameMode.cs:1-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L1-L20)
 
 **Section sources**
-- [README.md:26-32](file://README.md#L26-L32)
-- [LobbyManager.cs:1-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L1-L589)
-- [Relay.cs:1-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L1-L71)
-- [LobbyRelayChecker.cs:1-63](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L1-L63)
-- [PlayerNetwork.cs:1-432](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L432)
-- [PlayerRoot.cs:323-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L323-L366)
+- [InGameManager.cs:1-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L1-L295)
+- [TimePhaseCounter.cs:1-110](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L1-L110)
+- [PlayerNetwork.cs:1-537](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L537)
+- [PlayerRoot.cs:1-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L367)
 - [PlayerBehaviour.cs:1-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L1-L31)
+- [WebSocketServerManager.cs:1-200](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L1-L200)
+- [AgentWebSocketHandler.cs:1-51](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L1-L51)
+- [WebSocketDataStructures.cs:1-100](file://Assets/FPS-Game/Scripts/System/WebSocketDataStructures.cs#L1-L100)
+- [GameMode.cs:1-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L1-L20)
 
 ## Core Components
-- Unity Services initialization and authentication:
-  - Initializes Unity Services with a player profile and signs in anonymously.
-  - Triggers lobby list refresh upon successful sign-in.
-  - See [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104).
-- Relay creation and join:
-  - Creates a Relay allocation, generates a join code, configures Unity Transport with Relay server data, and starts as host.
-  - Joins an existing Relay allocation using a join code and starts as client.
-  - See [Relay.cs:26-70](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L26-L70).
-- Lobby-to-Relay handoff:
-  - Host creates a Relay and writes the join code into lobby data for members to consume.
-  - Non-host clients read the join code from lobby data and join Relay.
-  - See [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569) and [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177).
-- Session readiness:
-  - Periodically compares lobby player count with connected clients to signal when all players are ready to play.
-  - See [LobbyRelayChecker.cs:19-61](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L61).
-- Player synchronization:
-  - Networked player behaviors and synchronization integrate with NGO and rely on lobby context for identity and state.
-  - See [PlayerNetwork.cs:12-220](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L220), [PlayerRoot.cs:323-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L323-L366), [PlayerBehaviour.cs:1-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L1-L31).
+**Updated**: The core networking components have been simplified to remove Unity Services dependencies:
+
+- **Game Mode Management**:
+  - Supports three operational modes: Multiplayer (direct networking), WebSocket Agent (AI agents), and Single Player (testing)
+  - Initializes appropriate systems based on selected mode
+  - See [InGameManager.cs:110-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L124)
+
+- **Direct Peer-to-Peer Connections**:
+  - Immediate countdown starts without lobby/relay coordination
+  - Direct IP-based connections using Unity Netcode
+  - Simplified player identity mapping without authentication dependency
+  - See [TimePhaseCounter.cs:40-41](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L40-L41), [PlayerNetwork.cs:38-39](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L39)
+
+- **WebSocket Agent Infrastructure**:
+  - WebSocket server for AI agent control
+  - Handles agent connections, commands, and state management
+  - Supports real-time communication between external agents and Unity game
+  - See [WebSocketServerManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L164-L172)
+
+- **Phase-Based Countdown System**:
+  - Four-phase match structure: Waiting, Preparation, Combat, Result
+  - Automatic phase advancement without external coordination
+  - Network variable-based timing system
+  - See [TimePhaseCounter.cs:5-11](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L5-L11), [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)
 
 **Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [Relay.cs:26-70](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L26-L70)
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- [LobbyRelayChecker.cs:19-61](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L61)
-- [PlayerNetwork.cs:12-220](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L220)
-- [PlayerRoot.cs:323-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L323-L366)
-- [PlayerBehaviour.cs:1-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L1-L31)
+- [InGameManager.cs:110-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L124)
+- [InGameManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L172)
+- [TimePhaseCounter.cs:40-41](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L40-L41)
+- [PlayerNetwork.cs:38-39](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L39)
+- [WebSocketServerManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L164-L172)
+- [TimePhaseCounter.cs:5-11](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L5-L11)
+- [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)
 
 ## Architecture Overview
-The system integrates Unity Lobby for matchmaking and Unity Relay for serverless connectivity. The flow:
-- Unity Services initialize and authenticate the player.
-- Host creates a lobby and a Relay allocation, stores the join code in lobby data.
-- Clients join the lobby and the same scene, then join Relay using the stored code.
-- Once all players are connected, the game proceeds to the play scene.
+**Updated**: The system now operates in three distinct modes with simplified networking:
+
+### Multiplayer Mode (Direct Networking)
+- Unity Netcode handles direct peer-to-peer connections
+- Immediate countdown begins when server spawns
+- No lobby or relay coordination required
+- Direct IP-based connections established through Unity Transport
+
+### WebSocket Agent Mode (AI Control)
+- WebSocket server accepts external agent connections
+- Agents send commands (move, look, shoot, reload)
+- Unity game processes agent actions in real-time
+- Bypasses traditional networking services entirely
+
+### Single Player Mode (Testing)
+- Local-only gameplay without external connections
+- Minimal networking overhead for development
+- Ideal for testing and debugging
 
 ```mermaid
 sequenceDiagram
-participant Auth as "AuthenticationService"
-participant LM as "LobbyManager"
-participant Relay as "Relay"
-participant Lobbies as "LobbyService"
-participant Transport as "UnityTransport"
-participant Clients as "Clients"
-Auth->>Auth : "InitializeAsync(profile)"
-Auth->>Auth : "SignInAnonymouslyAsync()"
-Auth-->>LM : "SignedIn event"
-LM->>Lobbies : "CreateLobby(...)"
-LM-->>LM : "joinedLobby"
-LM->>Relay : "CreateRelay(maxPlayers)"
-Relay->>Relay : "CreateAllocationAsync(maxPlayers)"
-Relay-->>LM : "joinCode"
-LM->>Lobbies : "UpdateLobby(data : joinCode)"
-Clients->>Lobbies : "JoinLobbyByCode(code)"
-Clients->>LM : "Load Play Scene"
-Clients->>Relay : "JoinRelay(joinCode)"
-Relay->>Transport : "SetRelayServerData(RelayServerData)"
-Relay-->>Clients : "StartClient()"
-LM->>LM : "Periodic check : all players connected?"
-LM-->>Clients : "onAllPlayersConnected"
+participant Server as "Server (InGameManager)"
+participant Clients as "Clients (PlayerNetwork)"
+participant Timer as "TimePhaseCounter"
+participant WS as "WebSocketServer"
+Note over Server,Clients : Multiplayer Mode
+Server->>Timer : "Start countdown immediately"
+Timer->>Timer : "Advance phases automatically"
+Clients->>Clients : "Direct peer-to-peer sync"
+Note over WS,Clients : WebSocket Agent Mode
+WS->>WS : "Accept agent connections"
+WS->>Server : "Forward agent commands"
+Server->>Clients : "Execute agent actions"
+Note over Server,Clients : Single Player Mode
+Server->>Server : "Local-only simulation"
 ```
 
 **Diagram sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:264-286](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L264-L286)
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- [Relay.cs:26-70](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L26-L70)
+- [InGameManager.cs:110-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L124)
+- [TimePhaseCounter.cs:34-46](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L34-L46)
+- [WebSocketServerManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L164-L172)
 
 ## Detailed Component Analysis
 
-### Relay Component
+### InGameManager Component
+**Updated**: Simplified to support multiple operational modes:
+
 Responsibilities:
-- Create a Relay allocation and return a join code.
-- Configure Unity Transport with Relay server data and start as host.
-- Join an existing Relay allocation using a join code and start as client.
-- Handle exceptions from the Relay service.
+- Initialize game systems based on selected mode (Multiplayer, WebSocket Agent, Single Player)
+- Manage component lifecycle across different game modes
+- Coordinate game state and player information exchange
+- Handle WebSocket server initialization for agent mode
 
 Key behaviors:
-- Allocation creation and join code retrieval: [Relay.cs:27-33](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L27-L33)
-- Transport configuration and host/client startup: [Relay.cs:37-41](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L37-L41), [Relay.cs:60-64](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L60-L64)
-- Exception handling: [Relay.cs:45-49](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L45-L49), [Relay.cs:66-69](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L66-L69)
-
-```mermaid
-classDiagram
-class Relay {
-+CreateRelay(playerNum) Task~string~
-+JoinRelay(joinCode) void
--Instance : Relay
-}
-class UnityTransport {
-+SetRelayServerData(RelayServerData)
-}
-class RelayService {
-+CreateAllocationAsync(playerNum)
-+GetJoinCodeAsync(allocationId)
-+JoinAllocationAsync(joinCode)
-}
-Relay --> UnityTransport : "configures"
-Relay --> RelayService : "calls"
-```
-
-**Diagram sources**
-- [Relay.cs:10-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L10-L71)
-
-**Section sources**
-- [Relay.cs:10-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L10-L71)
-
-### LobbyManager Component
-Responsibilities:
-- Initialize Unity Services and authenticate the player.
-- Create and join lobbies, maintain lobby state, and poll for updates.
-- Host flow: create Relay, write join code into lobby data, and signal start.
-- Client flow: read join code from lobby data and join Relay.
-- Heartbeat and polling timers to keep lobby state fresh.
-
-Key behaviors:
-- Authentication and initialization: [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- Host creates Relay and publishes join code: [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- Clients join Relay using lobby data: [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- Polling and heartbeat: [LobbyManager.cs:122-136](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L122-L136), [LobbyManager.cs:138-205](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L138-L205)
+- Mode-based initialization: [InGameManager.cs:110-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L124)
+- WebSocket mode setup: [InGameManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L172)
+- Player information collection: [InGameManager.cs:204-257](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L204-L257)
 
 ```mermaid
 flowchart TD
-Start(["Host Start Game"]) --> CreateRelay["CreateRelay(maxPlayers)"]
-CreateRelay --> PublishCode["Publish joinCode to lobby data"]
-PublishCode --> WaitClients["Wait for clients to join lobby"]
-WaitClients --> AllConnected{"All players connected?"}
-AllConnected --> |No| WaitClients
-AllConnected --> |Yes| SignalStart["Signal start and load Play Scene"]
-SignalStart --> JoinRelay["Clients JoinRelay(joinCode)"]
-JoinRelay --> Ready["Ready to play"]
+Start(["Game Start"]) --> CheckMode{"Check GameMode"}
+CheckMode --> |Multiplayer| InitMultiplayer["Initialize Multiplayer Systems"]
+CheckMode --> |WebSocketAgent| InitWebSocket["Initialize WebSocket Server"]
+CheckMode --> |SinglePlayer| InitSingle["Initialize Single Player"]
+InitMultiplayer --> SetupCountdown["Setup Direct Countdown"]
+InitWebSocket --> AcceptAgents["Accept Agent Connections"]
+InitSingle --> LocalGame["Local Simulation Only"]
+SetupCountdown --> Ready["Game Ready"]
+AcceptAgents --> Ready
+LocalGame --> Ready
 ```
 
 **Diagram sources**
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
+- [InGameManager.cs:110-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L124)
+- [InGameManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L172)
 
 **Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- [LobbyManager.cs:122-136](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L122-L136)
-- [LobbyManager.cs:138-205](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L138-L205)
+- [InGameManager.cs:110-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L124)
+- [InGameManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L172)
+- [InGameManager.cs:204-257](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L204-L257)
 
-### LobbyRelayChecker Component
+### TimePhaseCounter Component
+**Updated**: Removed lobby/relay dependencies and simplified to direct countdown:
+
 Responsibilities:
-- Periodically checks whether the number of connected clients equals the number of lobby players.
-- Invokes an event when all players are connected to Relay.
+- Manage four-phase match structure: Waiting, Preparation, Combat, Result
+- Automatic phase advancement without external coordination
+- Network variable-based timing system for all clients
+- Immediate countdown start for direct networking mode
 
 Key behaviors:
-- Periodic loop and delay: [LobbyRelayChecker.cs:19-34](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L34)
-- Comparison and event firing: [LobbyRelayChecker.cs:40-55](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L40-L55)
+- Immediate countdown activation: [TimePhaseCounter.cs:40-41](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L40-L41)
+- Phase advancement logic: [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)
+- Network timing synchronization: [TimePhaseCounter.cs:52-53](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L52-L53)
 
 ```mermaid
-sequenceDiagram
-participant Checker as "LobbyRelayChecker"
-participant Lobbies as "LobbyService"
-participant NM as "NetworkManager"
-Checker->>Lobbies : "GetLobbyAsync(lobbyId)"
-Lobbies-->>Checker : "Lobby"
-Checker->>NM : "Read ConnectedClientsList.Count"
-Checker->>Checker : "Compare counts"
-alt "Equal"
-Checker-->>Checker : "Fire onAllPlayersConnected"
-else "Not equal"
-Checker->>Checker : "Wait checkIntervalSeconds"
-end
+stateDiagram-v2
+[*] --> Waiting
+Waiting --> Preparation : countdown finished
+Preparation --> Combat : countdown finished
+Combat --> Result : countdown finished
+Result --> [*]
 ```
 
 **Diagram sources**
-- [LobbyRelayChecker.cs:19-61](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L61)
+- [TimePhaseCounter.cs:5-11](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L5-L11)
+- [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)
 
 **Section sources**
-- [LobbyRelayChecker.cs:19-61](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L61)
+- [TimePhaseCounter.cs:40-41](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L40-L41)
+- [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)
+- [TimePhaseCounter.cs:52-53](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L52-L53)
 
 ### PlayerNetwork Component
+**Updated**: Removed Unity Services dependencies and simplified identity mapping:
+
 Responsibilities:
-- Network synchronization for player behaviors.
-- Maps lobby player identities to in-game player instances.
-- Integrates with NGO and relies on lobby context for player metadata.
+- Network synchronization for player behaviors
+- Direct player identity mapping without lobby/authentication
+- Simplified player name assignment using client IDs
+- Integration with Unity Netcode for all networking operations
 
 Key behaviors:
-- Identity mapping RPC: [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
-- Network spawn and enable logic: [PlayerNetwork.cs:20-36](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L20-L36)
+- Direct player name mapping: [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
+- Simplified initialization: [PlayerNetwork.cs:22-47](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L22-L47)
+- Network object management: [PlayerNetwork.cs:18-21](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L18-L21)
 
 ```mermaid
 classDiagram
@@ -281,130 +283,193 @@ PlayerRoot --> PlayerBehaviour : "coordinates"
 ```
 
 **Diagram sources**
-- [PlayerNetwork.cs:12-220](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L220)
-- [PlayerRoot.cs:323-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L323-L366)
-- [PlayerBehaviour.cs:1-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L1-L31)
+- [PlayerNetwork.cs:12-225](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L225)
+- [PlayerRoot.cs:160-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L367)
+- [PlayerBehaviour.cs:4-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L4-L31)
 
 **Section sources**
-- [PlayerNetwork.cs:12-220](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L220)
-- [PlayerRoot.cs:323-366](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L323-L366)
-- [PlayerBehaviour.cs:1-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L1-L31)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
+- [PlayerNetwork.cs:22-47](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L22-L47)
+- [PlayerNetwork.cs:18-21](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L18-L21)
 
-## Dependency Analysis
-- LobbyManager depends on:
-  - Unity Services (authentication, lobby) for identity and matchmaking.
-  - Relay component for allocation and join code generation.
-  - Unity Transport for configuring Relay server data.
-- Relay component depends on:
-  - Unity Services Relay for allocation/join operations.
-  - Unity Transport for setting Relay server data.
-- LobbyRelayChecker depends on:
-  - Unity Services Lobby for retrieving lobby state.
-  - NGO NetworkManager for connected client count.
-- PlayerNetwork depends on:
-  - NGO for network synchronization.
-  - LobbyManager for lobby context and identity mapping.
+### WebSocketServerManager Component
+**New**: Added WebSocket infrastructure for AI agent control:
+
+Responsibilities:
+- Manage WebSocket server lifecycle and connections
+- Handle agent session tracking and command routing
+- Process incoming agent commands and forward to game systems
+- Maintain connection state and error handling
+
+Key behaviors:
+- Server initialization: [WebSocketServerManager.cs:85-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L85-L108)
+- Agent connection handling: [WebSocketServerManager.cs:113-133](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L113-L133)
+- Command processing: [WebSocketServerManager.cs:138-160](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L138-L160)
 
 ```mermaid
-graph TB
-LM["LobbyManager.cs"] --> RS["Relay.cs"]
-LM --> LS["LobbyService (Unity)"]
-LM --> AS["AuthenticationService (Unity)"]
-RS --> RT["RelayService (Unity)"]
-RS --> UT["UnityTransport"]
-LR["LobbyRelayChecker.cs"] --> LS
-LR --> NM["NetworkManager (NGO)"]
-PN["PlayerNetwork.cs"] --> NM
-PN --> LS
+sequenceDiagram
+participant Client as "External Agent"
+participant Server as "WebSocketServerManager"
+participant Handler as "AgentWebSocketHandler"
+participant Game as "Unity Game"
+Client->>Server : "Connect to ws : //localhost : 8080/agent"
+Server->>Handler : "Create session handler"
+Handler->>Game : "Forward agent commands"
+Game->>Client : "Send game state updates"
+Client->>Server : "Disconnect"
+Server->>Handler : "Cleanup session"
 ```
 
 **Diagram sources**
-- [LobbyManager.cs:1-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L1-L589)
-- [Relay.cs:1-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L1-L71)
-- [LobbyRelayChecker.cs:1-63](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L1-L63)
-- [PlayerNetwork.cs:1-432](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L432)
+- [WebSocketServerManager.cs:85-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L85-L108)
+- [WebSocketServerManager.cs:113-133](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L113-L133)
+- [WebSocketServerManager.cs:138-160](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L138-L160)
 
 **Section sources**
-- [LobbyManager.cs:1-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L1-L589)
-- [Relay.cs:1-71](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L1-L71)
-- [LobbyRelayChecker.cs:1-63](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L1-L63)
-- [PlayerNetwork.cs:1-432](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L432)
+- [WebSocketServerManager.cs:85-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L85-L108)
+- [WebSocketServerManager.cs:113-133](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L113-L133)
+- [WebSocketServerManager.cs:138-160](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L138-L160)
+
+## Dependency Analysis
+**Updated**: Dependencies have been significantly simplified:
+
+- **InGameManager** depends on:
+  - GameMode enumeration for operational mode selection
+  - TimePhaseCounter for countdown management
+  - PlayerNetwork components for player synchronization
+  - WebSocketServerManager for agent mode functionality
+
+- **TimePhaseCounter** depends on:
+  - Unity Netcode for network timing
+  - InGameManager for game state coordination
+
+- **PlayerNetwork** depends on:
+  - Unity Netcode for all networking operations
+  - PlayerRoot for component coordination
+  - Direct client-server communication without Unity Services
+
+- **WebSocketServerManager** depends on:
+  - WebSocketSharp library for WebSocket functionality
+  - Unity game systems for command execution
+  - AgentWebSocketHandler for connection management
+
+```mermaid
+graph TB
+IM["InGameManager.cs"] --> GM["GameMode.cs"]
+IM --> TPC["TimePhaseCounter.cs"]
+IM --> PN["PlayerNetwork.cs"]
+IM --> WSM["WebSocketServerManager.cs"]
+TPC --> IM
+PN --> PR["PlayerRoot.cs"]
+PN --> IM
+WSM --> AWH["AgentWebSocketHandler.cs"]
+WSM --> WDS["WebSocketDataStructures.cs"]
+```
+
+**Diagram sources**
+- [InGameManager.cs:1-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L1-L295)
+- [TimePhaseCounter.cs:1-110](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L1-L110)
+- [PlayerNetwork.cs:1-537](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L537)
+- [PlayerRoot.cs:1-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L367)
+- [WebSocketServerManager.cs:1-200](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L1-L200)
+- [AgentWebSocketHandler.cs:1-51](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L1-L51)
+- [WebSocketDataStructures.cs:1-100](file://Assets/FPS-Game/Scripts/System/WebSocketDataStructures.cs#L1-L100)
+- [GameMode.cs:1-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L1-L20)
+
+**Section sources**
+- [InGameManager.cs:1-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L1-L295)
+- [TimePhaseCounter.cs:1-110](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L1-L110)
+- [PlayerNetwork.cs:1-537](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L537)
+- [PlayerRoot.cs:1-367](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L367)
+- [WebSocketServerManager.cs:1-200](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L1-L200)
+- [AgentWebSocketHandler.cs:1-51](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L1-L51)
+- [WebSocketDataStructures.cs:1-100](file://Assets/FPS-Game/Scripts/System/WebSocketDataStructures.cs#L1-L100)
+- [GameMode.cs:1-20](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L1-L20)
 
 ## Performance Considerations
-- Minimize lobby polling frequency to reduce API overhead; the implementation uses periodic polling with fixed intervals.
-- Use Relay join codes to avoid NAT traversal complexity for clients; allocations are created with appropriate capacity.
-- Keep the play scene loading lightweight to reduce pre-game delays after joining Relay.
-- Monitor connected client count versus lobby player count to avoid premature start signals.
+**Updated**: Performance optimizations for simplified architecture:
 
-[No sources needed since this section provides general guidance]
+- **Reduced Latency**: Direct peer-to-peer connections eliminate lobby/relay coordination overhead
+- **Immediate Start**: Countdown begins immediately without external service dependencies
+- **WebSocket Efficiency**: Optimized for AI agent scenarios with minimal processing overhead
+- **Memory Usage**: Removed Unity Services libraries to reduce memory footprint
+- **Scalability**: WebSocket server designed for multiple concurrent agent connections
 
 ## Troubleshooting Guide
-Common issues and remedies:
-- Authentication failures:
-  - Ensure Unity Services initializes and anonymous sign-in completes before refreshing lobby lists.
-  - Reference: [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- Relay allocation errors:
-  - Catch and log RelayServiceException during allocation or join attempts; verify player capacity matches lobby max players.
-  - Reference: [Relay.cs:45-49](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L45-L49), [Relay.cs:66-69](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L66-L69)
-- Join code not found:
-  - Confirm the host published the join code into lobby data and clients are reading the correct field.
-  - Reference: [LobbyManager.cs:553-560](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L553-L560), [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- Clients not connecting to Relay:
-  - Verify Unity Transport is configured with Relay server data after resolving the join code.
-  - Reference: [Relay.cs:60-64](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L60-L64)
-- Players not considered “ready”:
-  - Adjust check interval and ensure lobby polling is active; confirm all clients are in the same scene and have started as clients.
-  - Reference: [LobbyRelayChecker.cs:19-34](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L34), [LobbyRelayChecker.cs:40-55](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L40-L55)
-- NAT traversal problems:
-  - Relay handles NAT traversal automatically; ensure internet connectivity and that the build is linked to Unity Services with Relay enabled.
-  - Reference: [README.md:92-96](file://README.md#L92-L96)
+**Updated**: Issues specific to the new simplified architecture:
+
+### Multiplayer Mode Issues
+- **Connection Problems**:
+  - Verify Unity Netcode is properly configured in the build
+  - Check network settings and firewall configurations
+  - Ensure all clients use the same build version
+  - Reference: [InGameManager.cs:186-191](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L186-L191)
+
+- **Countdown Not Starting**:
+  - Confirm TimePhaseCounter is properly initialized
+  - Check server authority and network timing
+  - Verify network variables are syncing correctly
+  - Reference: [TimePhaseCounter.cs:34-46](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L34-L46)
+
+### WebSocket Agent Mode Issues
+- **Server Not Starting**:
+  - Verify websocket-sharp library is included in the build
+  - Check port 8080 availability and firewall settings
+  - Ensure WebSocketServerManager is properly initialized
+  - Reference: [WebSocketServerManager.cs:85-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L85-L108)
+
+- **Agent Connections Failing**:
+  - Verify external agents connect to ws://localhost:8080/agent
+  - Check WebSocketSharp library compatibility
+  - Review AgentWebSocketHandler logs for connection errors
+  - Reference: [AgentWebSocketHandler.cs:21-32](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L21-L32)
+
+### Single Player Mode Issues
+- **Local Gameplay Problems**:
+  - Verify Single Player mode is selected in GameMode
+  - Check for component initialization issues
+  - Ensure all required systems are present
+  - Reference: [InGameManager.cs:177-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L177-L181)
 
 **Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [Relay.cs:45-49](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L45-L49)
-- [Relay.cs:66-69](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L66-L69)
-- [LobbyManager.cs:553-560](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L553-L560)
-- [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- [Relay.cs:60-64](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L60-L64)
-- [LobbyRelayChecker.cs:19-34](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L19-L34)
-- [LobbyRelayChecker.cs:40-55](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L40-L55)
-- [README.md:92-96](file://README.md#L92-L96)
+- [InGameManager.cs:186-191](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L186-L191)
+- [TimePhaseCounter.cs:34-46](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L34-L46)
+- [WebSocketServerManager.cs:85-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L85-L108)
+- [AgentWebSocketHandler.cs:21-32](file://Assets/FPS-Game/Scripts/System/AgentWebSocketHandler.cs#L21-L32)
+- [InGameManager.cs:177-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L177-L181)
 
 ## Conclusion
-The project integrates Unity Lobby and Unity Relay to deliver a seamless matchmaking and connectivity experience. The host orchestrates Relay allocation and publishes the join code in lobby data, while clients join the same scene and Relay using that code. Unity Transport is configured centrally to handle NAT traversal transparently. The system includes a readiness checker to coordinate game start timing and relies on NGO for player synchronization.
-
-[No sources needed since this section summarizes without analyzing specific files]
+**Updated**: The project has successfully transitioned from Unity Services-based networking to a simplified direct peer-to-peer architecture. The removal of Unity Lobby, Relay, and Authentication services has resulted in reduced complexity, lower latency, and improved performance. The system now supports three operational modes: Multiplayer (direct networking), WebSocket Agent (AI control), and Single Player (testing). Immediate countdowns and direct IP-based connections provide a streamlined gaming experience without external service dependencies.
 
 ## Appendices
 
 ### Practical Examples
 
-- Creating a relay room (host):
-  - Steps: Initialize Unity Services, create a lobby, host creates a Relay allocation, publishes the join code to lobby data, and signals start.
-  - References: [LobbyManager.cs:264-286](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L264-L286), [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
+#### Multiplayer Mode Setup
+- **Steps**: Select Multiplayer mode, Unity Netcode handles direct connections, countdown starts immediately
+- **References**: [InGameManager.cs:113-114](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L113-L114), [TimePhaseCounter.cs:40-41](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L40-L41)
 
-- Joining an existing session (client):
-  - Steps: Authenticate, join lobby by code, load the play scene, and join Relay using the stored join code.
-  - References: [LobbyManager.cs:321-335](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L321-L335), [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
+#### WebSocket Agent Integration
+- **Steps**: Initialize WebSocket server, external agents connect via WebSocket, commands processed in real-time
+- **References**: [InGameManager.cs:168-169](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L168-L169), [WebSocketServerManager.cs:138-160](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L138-L160)
 
-- Handling relay connection failures:
-  - Log exceptions from Relay operations and surface meaningful errors to users; retry logic can be added around allocation/join calls.
-  - References: [Relay.cs:45-49](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L45-L49), [Relay.cs:66-69](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L66-L69)
+#### Single Player Development
+- **Steps**: Select Single Player mode, local-only simulation, minimal networking overhead
+- **References**: [InGameManager.cs:177-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L177-L181)
 
-- Network topology considerations:
-  - Use Relay for NAT traversal; ensure clients start as clients after transport configuration.
-  - References: [Relay.cs:60-64](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L60-L64)
+#### Direct Player Identity Mapping
+- **Process**: Player names assigned directly using client IDs instead of lobby/authentication
+- **References**: [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
 
-- Connection quality monitoring and fallbacks:
-  - Monitor connected client count against lobby player count; if mismatch persists, prompt users to rejoin or check connectivity.
-  - References: [LobbyRelayChecker.cs:40-55](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L40-L55)
+#### Phase-Based Game Flow
+- **Structure**: Waiting → Preparation → Combat → Result phases with automatic advancement
+- **References**: [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)
 
 **Section sources**
-- [LobbyManager.cs:264-286](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L264-L286)
-- [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
-- [LobbyManager.cs:321-335](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L321-L335)
-- [LobbyManager.cs:170-177](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L170-L177)
-- [Relay.cs:45-49](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L45-L49)
-- [Relay.cs:66-69](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L66-L69)
-- [Relay.cs:60-64](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/Relay.cs#L60-L64)
-- [LobbyRelayChecker.cs:40-55](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs#L40-L55)
+- [InGameManager.cs:113-114](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L113-L114)
+- [TimePhaseCounter.cs:40-41](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L40-L41)
+- [InGameManager.cs:168-169](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L168-L169)
+- [WebSocketServerManager.cs:138-160](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L138-L160)
+- [InGameManager.cs:177-181](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L177-L181)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
+- [TimePhaseCounter.cs:70-91](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L70-L91)

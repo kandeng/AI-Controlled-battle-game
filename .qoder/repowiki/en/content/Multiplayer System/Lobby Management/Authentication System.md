@@ -2,12 +2,22 @@
 
 <cite>
 **Referenced Files in This Document**
-- [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
-- [AuthenticateUI.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs)
 - [PlayerNetwork.cs](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs)
 - [PlayerRoot.cs](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs)
+- [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
+- [TimePhaseCounter.cs](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs)
+- [WebSocketServerManager.cs](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs)
 - [README.md](file://README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Complete removal of Unity Authentication Service dependencies and lobby integration
+- Replacement of authentication-based player identification with direct client ID mapping
+- Elimination of Unity Services Core dependencies in favor of pure Netcode networking
+- Updated player profile initialization to use generated 'Player_{ClientId}' string format
+- Removal of lobby management and Relay integration components
+- Introduction of WebSocket agent mode for AI integration without authentication
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -21,256 +31,183 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the Unity Authentication Service integration within the lobby management system. It focuses on anonymous authentication using Unity Services Core, player profile initialization, authentication state management, and the automatic lobby list refresh triggered upon successful sign-in. It also covers initialization options, event handling for signed-in state changes, error handling patterns, security considerations, token lifecycle, and practical examples of authentication setup and state-checking patterns.
+This document explains the authentication system evolution in the lobby management system. The system has been completely refactored to eliminate Unity Authentication Service dependencies and adopt a direct connection model. The new architecture uses generated 'Player_{ClientId}' string formats for player identification and leverages Unity Netcode for all networking operations without requiring Unity Services authentication or lobby management.
 
 ## Project Structure
-The authentication and lobby management logic is primarily implemented in the lobby scripts and UI components. The authentication flow is initiated from the lobby sign-in UI and orchestrated by the lobby manager, which initializes Unity Services, authenticates anonymously, and listens for signed-in events to refresh the lobby list.
+The authentication system now operates independently of Unity Services, focusing purely on Netcode-based player identification and networking. The system maintains player identity mapping through ServerRpc calls and eliminates all authentication dependencies.
 
 ```mermaid
 graph TB
-subgraph "Lobby UI"
-AU["AuthenticateUI.cs"]
-end
-subgraph "Lobby Management"
-LM["LobbyManager.cs"]
-end
-subgraph "Unity Services"
-US["UnityServices"]
-AS["AuthenticationService"]
-LS["LobbyService"]
-end
-subgraph "Player Networking"
+subgraph "Direct Connection Model"
 PN["PlayerNetwork.cs"]
 PR["PlayerRoot.cs"]
+IGM["InGameManager.cs"]
+TPC["TimePhaseCounter.cs"]
 end
-AU --> LM
-LM --> US
-LM --> AS
-LM --> LS
-AS --> LM
-PN --> AS
-PR --> PN
+subgraph "WebSocket Integration"
+WSM["WebSocketServerManager.cs"]
+end
+subgraph "Networking Layer"
+NC["Unity.Netcode"]
+end
+PN --> PR
+PR --> IGM
+IGM --> NC
+WSM --> IGM
+TPC --> IGM
 ```
 
 **Diagram sources**
-- [AuthenticateUI.cs:1-20](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L1-L20)
-- [LobbyManager.cs:1-589](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L1-L589)
-- [PlayerNetwork.cs:1-310](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L310)
-- [PlayerRoot.cs:1-125](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L1-L125)
+- [PlayerNetwork.cs:12-55](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L55)
+- [PlayerRoot.cs:160-218](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L160-L218)
+- [InGameManager.cs:66-159](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L159)
+- [WebSocketServerManager.cs:17-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L108)
 
 **Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [AuthenticateUI.cs:7-19](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L7-L19)
+- [PlayerNetwork.cs:38-40](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L40)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
 
 ## Core Components
-- Authentication initialization and profile setup:
-  - Initializes Unity Services with a player profile using InitializationOptions and sets the profile name.
-  - Subscribes to the SignedIn event to trigger lobby list refresh after successful authentication.
-  - Calls SignInAnonymouslyAsync to perform anonymous authentication.
-
-- Authentication state management:
-  - Uses UnityServices.State and AuthenticationService.Instance.IsSignedIn to gate lobby list refresh and polling.
-  - Automatically refreshes the lobby list when the signed-in state becomes true.
-
-- Player profile initialization:
-  - Stores the player name in the lobby manager and constructs a Player object with public name data for lobby operations.
-
-- Integration with lobby services:
-  - Creates, joins, updates, and polls lobby state using Unity Lobby APIs.
-  - Starts the game by creating a Relay code and updating lobby data accordingly.
+- **Direct Player Identification**: Replaces Unity Authentication Service with direct client ID mapping using the format 'Player_{ClientId}'
+- **ServerRpc-Based Mapping**: Uses MappingValues_ServerRpc to establish player identity across the network
+- **Netcode-First Architecture**: Eliminates all Unity Services dependencies in favor of pure Unity Netcode operations
+- **WebSocket Agent Integration**: Maintains AI agent connectivity through WebSocket server without authentication requirements
+- **Simplified Player Management**: Player names are generated dynamically using client IDs instead of authenticated profiles
 
 **Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:288-319](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L288-L319)
-- [LobbyManager.cs:106-120](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L106-L120)
-- [LobbyManager.cs:138-205](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L138-L205)
-- [LobbyManager.cs:234-240](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L234-L240)
+- [PlayerNetwork.cs:38-40](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L40)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
+- [InGameManager.cs:111-124](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L111-L124)
 
 ## Architecture Overview
-The authentication workflow integrates UI triggers, service initialization, and lobby management. The sequence below maps the actual code paths for anonymous authentication and subsequent lobby list refresh.
-
-```mermaid
-sequenceDiagram
-participant UI as "AuthenticateUI.cs"
-participant LM as "LobbyManager.cs"
-participant US as "UnityServices"
-participant AS as "AuthenticationService"
-participant LS as "LobbyService"
-UI->>LM : "Authenticate(playerName)"
-LM->>US : "InitializeAsync(InitializationOptions with profile)"
-LM->>AS : "SignInAnonymouslyAsync()"
-AS-->>LM : "SignedIn event"
-LM->>LS : "QueryLobbiesAsync()"
-LS-->>LM : "Lobby list response"
-LM-->>UI : "Lobby list refresh complete"
-```
-
-**Diagram sources**
-- [AuthenticateUI.cs:14-17](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L14-L17)
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:288-319](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L288-L319)
-
-## Detailed Component Analysis
-
-### Authentication Initialization and Anonymous Sign-In
-- InitializationOptions:
-  - Sets the player profile name during Unity Services initialization.
-- Anonymous sign-in:
-  - Initiates anonymous authentication and subscribes to the SignedIn event.
-- Signed-in event handling:
-  - Triggers a lobby list refresh when the signed-in state becomes true.
-
-```mermaid
-flowchart TD
-Start(["Authenticate(name)"]) --> Init["Create InitializationOptions<br/>SetProfile(name)"]
-Init --> ServicesInit["Initialize Unity Services"]
-ServicesInit --> Subscribe["Subscribe to SignedIn event"]
-Subscribe --> SignIn["SignInAnonymouslyAsync()"]
-SignIn --> OnSignedIn{"SignedIn event?"}
-OnSignedIn --> |Yes| Refresh["RefreshLobbyList()"]
-OnSignedIn --> |No| Wait["Wait for event"]
-Refresh --> End(["Authenticated"])
-Wait --> OnSignedIn
-```
-
-**Diagram sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:288-319](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L288-L319)
-
-**Section sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-
-### Player Profile Initialization and Lobby Integration
-- Player profile:
-  - The player name is stored in the lobby manager and used to create a Player object with public name data.
-- Lobby operations:
-  - Uses the Player object when creating or joining lobbies and updating player data.
-
-```mermaid
-flowchart TD
-A["Set playerName in LobbyManager"] --> B["Construct Player with KEY_PLAYER_NAME"]
-B --> C["CreateLobby/JoinLobby with Player"]
-C --> D["UpdatePlayerName if needed"]
-```
-
-**Diagram sources**
-- [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
-- [LobbyManager.cs:234-240](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L234-L240)
-- [LobbyManager.cs:321-335](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L321-L335)
-
-**Section sources**
-- [LobbyManager.cs:234-240](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L234-L240)
-- [LobbyManager.cs:321-335](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L321-L335)
-
-### Authentication State Management and Automatic Lobby Refresh
-- State gating:
-  - Lobby list refresh and polling are gated by UnityServices.State and AuthenticationService.Instance.IsSignedIn.
-- Heartbeat and polling:
-  - Periodic heartbeat ping and lobby polling occur only when the player is the host and the lobby is joined.
-- Exception handling:
-  - Catches and logs lobby service exceptions, including private lobby access errors.
-
-```mermaid
-flowchart TD
-S(["Update loop"]) --> CheckState["Check ServicesInitialized && IsSignedIn"]
-CheckState --> |True| Timer["Decrement refresh timer"]
-Timer --> Expired{"Timer expired?"}
-Expired --> |Yes| Refresh["RefreshLobbyList()"]
-Expired --> |No| Poll["HandleLobbyPolling()"]
-CheckState --> |False| Poll
-Poll --> HostCheck{"IsLobbyHost()?"}
-HostCheck --> |Yes| Heartbeat["SendHeartbeatPingAsync()"]
-HostCheck --> |No| UpdateUI["OnJoinedLobbyUpdate"]
-```
-
-**Diagram sources**
-- [LobbyManager.cs:106-120](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L106-L120)
-- [LobbyManager.cs:122-136](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L122-L136)
-- [LobbyManager.cs:138-205](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L138-L205)
-
-**Section sources**
-- [LobbyManager.cs:106-120](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L106-L120)
-- [LobbyManager.cs:122-136](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L122-L136)
-- [LobbyManager.cs:138-205](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L138-L205)
-
-### Integration with Player Networking
-- Player network mapping:
-  - After authentication, the player’s remote identity is mapped to local player data for networking.
-- Visibility and ownership:
-  - Controls model visibility and enables scripts based on ownership and bot status.
+The new authentication-free architecture operates entirely on Unity Netcode without external authentication services. Player identification flows directly through network connections using client IDs.
 
 ```mermaid
 sequenceDiagram
 participant PN as "PlayerNetwork.cs"
-participant AS as "AuthenticationService"
+participant NC as "Unity.Netcode"
 participant PR as "PlayerRoot.cs"
-PN->>AS : "Get PlayerId"
-PN->>PR : "Change model visibility / enable scripts"
-PN->>PN : "MappingValues_ServerRpc(playerId, clientId)"
+PN->>PN : "InitializeOnNetworkSpawn()"
+PN->>PN : "MappingValues_ServerRpc('Player_' + OwnerClientId)"
+PN->>NC : "ServerRpc(targetClientId)"
+NC-->>PN : "ClientRpc received"
+PN->>PR : "Set playerName = 'Player_' + clientId"
+PN->>PR : "ChangeModelVisibility(false)"
 ```
 
 **Diagram sources**
-- [PlayerNetwork.cs:22-39](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L22-L39)
-- [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
-- [PlayerRoot.cs:31-59](file://Assets/FPS-Game/Scripts/Player/PlayerRoot.cs#L31-L59)
+- [PlayerNetwork.cs:22-55](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L22-L55)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
+
+## Detailed Component Analysis
+
+### Direct Player Identification and Mapping
+The system now generates player names using the 'Player_{ClientId}' format instead of relying on Unity Authentication Service. This approach eliminates authentication dependencies while maintaining unique player identification.
+
+```mermaid
+flowchart TD
+Start(["Player Connect"]) --> Spawn["PlayerNetwork.InitializeOnNetworkSpawn()"]
+Spawn --> CheckBot{"IsCharacterBot()?"}
+CheckBot --> |No| Generate["Generate 'Player_' + OwnerClientId"]
+CheckBot --> |Yes| BotSetup["Bot-specific setup"]
+Generate --> ServerRpc["MappingValues_ServerRpc(playerID, OwnerClientId)"]
+ServerRpc --> Receive["Receive ClientRpc on target"]
+Receive --> SetName["Set playerName = playerID"]
+SetName --> Visibility["ChangeModelVisibility(false)"]
+BotSetup --> End(["Ready"])
+Visibility --> End
+```
+
+**Diagram sources**
+- [PlayerNetwork.cs:22-55](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L22-L55)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
 
 **Section sources**
-- [PlayerNetwork.cs:22-39](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L22-L39)
-- [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
+- [PlayerNetwork.cs:38-40](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L40)
+- [PlayerNetwork.cs:185-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L185-L195)
+
+### WebSocket Agent Integration Without Authentication
+The system maintains AI agent integration through WebSocket connections without requiring Unity Authentication Service. This enables autonomous agent control for testing and development scenarios.
+
+```mermaid
+flowchart TD
+WSM["WebSocketServerManager"] --> Start["Initialize()"]
+Start --> Listen["Start WebSocket Server"]
+Listen --> Sessions["Manage Agent Sessions"]
+Sessions --> Commands["Process Agent Commands"]
+Commands --> Broadcast["Broadcast Game State"]
+Broadcast --> Agents["Update Connected Agents"]
+```
+
+**Diagram sources**
+- [WebSocketServerManager.cs:71-96](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L96)
+- [WebSocketServerManager.cs:138-160](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L138-L160)
+
+**Section sources**
+- [WebSocketServerManager.cs:17-108](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L17-L108)
+- [InGameManager.cs:164-172](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L164-L172)
+
+### Netcode-Based Player Information Management
+Player information is managed entirely through Unity Netcode RPC calls without external authentication dependencies. The system captures and distributes player data across the network.
+
+```mermaid
+sequenceDiagram
+participant IGM as "InGameManager.cs"
+participant NC as "Unity.Netcode"
+participant PN as "PlayerNetwork.cs"
+IGM->>IGM : "GetAllPlayerInfos()"
+IGM->>NC : "GetAllPlayerInfos_ServerRPC()"
+NC->>PN : "Iterate ConnectedClients"
+PN-->>IGM : "Return PlayerInfo(clientId, playerName, stats)"
+IGM->>NC : "GetAllPlayerInfos_ClientRPC(data)"
+NC-->>IGM : "Distribute PlayerInfo to requester"
+```
+
+**Diagram sources**
+- [InGameManager.cs:204-257](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L204-L257)
+
+**Section sources**
+- [InGameManager.cs:204-257](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L204-L257)
 
 ## Dependency Analysis
-- UI-to-manager dependency:
-  - AuthenticateUI triggers LobbyManager.Authenticate and navigates to the lobby list scene.
-- Manager-to-services dependency:
-  - LobbyManager depends on Unity Services Core, Authentication, and Lobby services for initialization, authentication, and lobby operations.
-- Player-to-auth dependency:
-  - PlayerNetwork uses AuthenticationService.Instance.PlayerId for mapping and visibility logic.
+The authentication system has been completely decoupled from Unity Services, creating a leaner dependency structure focused solely on Unity Netcode and WebSocket integration.
 
 ```mermaid
 graph LR
-AU["AuthenticateUI.cs"] --> LM["LobbyManager.cs"]
-LM --> US["UnityServices"]
-LM --> AS["AuthenticationService"]
-LM --> LS["LobbyService"]
-PN["PlayerNetwork.cs"] --> AS
+PN["PlayerNetwork.cs"] --> NC["Unity.Netcode"]
 PR["PlayerRoot.cs"] --> PN
+IGM["InGameManager.cs"] --> NC
+IGM --> WSM["WebSocketServerManager.cs"]
+TPC["TimePhaseCounter.cs"] --> NC
+WSM --> AG["Agent Integration"]
 ```
 
 **Diagram sources**
-- [AuthenticateUI.cs:14-17](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L14-L17)
-- [LobbyManager.cs:5-11](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L5-L11)
-- [PlayerNetwork.cs:4-6](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L4-L6)
+- [PlayerNetwork.cs:1-10](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L10)
+- [InGameManager.cs:1-8](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L1-L8)
+- [WebSocketServerManager.cs:1-8](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L1-L8)
 
 **Section sources**
-- [AuthenticateUI.cs:14-17](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/AuthenticateUI.cs#L14-L17)
-- [LobbyManager.cs:5-11](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L5-L11)
-- [PlayerNetwork.cs:4-6](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L4-L6)
+- [PlayerNetwork.cs:1-10](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L1-L10)
+- [InGameManager.cs:1-8](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L1-L8)
 
 ## Performance Considerations
-- Polling cadence:
-  - Lobby polling and heartbeat intervals are tuned to balance responsiveness and server load.
-- Conditional refresh:
-  - Lobby list refresh is gated by authentication state to avoid unnecessary requests.
-- Async operations:
-  - Authentication and lobby operations are asynchronous to prevent blocking the main thread.
-
-[No sources needed since this section provides general guidance]
+- **Reduced Latency**: Elimination of authentication overhead improves connection speed
+- **Simplified State Management**: Direct client ID mapping reduces complexity in player identification
+- **WebSocket Efficiency**: Dedicated WebSocket server for AI agents without authentication overhead
+- **Netcode Optimization**: Pure Netcode operations minimize external dependency performance impacts
 
 ## Troubleshooting Guide
-- Initialization prerequisites:
-  - Ensure the project is linked to Unity Services with Authentication enabled before building.
-- Authentication failures:
-  - Verify that Unity Services initializes successfully and that the SignedIn event fires.
-  - Check for lobby service exceptions and handle private lobby access errors gracefully.
-- State checks:
-  - Use UnityServices.State and AuthenticationService.Instance.IsSignedIn to gate operations until authentication is confirmed.
-- Token lifecycle:
-  - Rely on Unity Services Core for token management; avoid manual token storage or manipulation.
+- **Connection Issues**: Verify Unity Netcode is properly configured without authentication requirements
+- **Player Identification**: Ensure 'Player_{ClientId}' format is correctly applied during network initialization
+- **WebSocket Integration**: Check WebSocket server initialization and agent connection status
+- **RPC Communication**: Verify ServerRpc/ClientRpc patterns for player data synchronization
+- **Bot Setup**: Confirm bot-specific initialization bypasses authentication-dependent logic
 
 **Section sources**
 - [README.md:91-96](file://README.md#L91-L96)
-- [LobbyManager.cs:109-109](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L109-L109)
-- [LobbyManager.cs:186-199](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L186-L199)
+- [PlayerNetwork.cs:38-40](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L38-L40)
+- [WebSocketServerManager.cs:71-96](file://Assets/FPS-Game/Scripts/System/WebSocketServerManager.cs#L71-L96)
 
 ## Conclusion
-The authentication system integrates Unity Services Core and Unity Lobby services to support anonymous sign-in, initialize player profiles, and manage authentication state. The lobby manager orchestrates initialization, event-driven refresh, and lobby operations while the UI component triggers the authentication flow. Proper state checks, exception handling, and integration with player networking ensure a robust and responsive lobby experience.
+The authentication system has been completely restructured to operate independently of Unity Authentication Service and Unity Lobby services. The new direct connection model uses Unity Netcode for all networking operations, implementing player identification through generated 'Player_{ClientId}' strings. This architecture eliminates authentication dependencies while maintaining robust player management, WebSocket agent integration, and simplified network communication patterns.

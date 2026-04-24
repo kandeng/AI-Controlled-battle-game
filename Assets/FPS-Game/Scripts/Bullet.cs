@@ -12,7 +12,7 @@ public class Bullet : MonoBehaviour
     private void ReturnSelf()
     {
         Rigidbody rb = GetComponent<Rigidbody>();
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         TrailRenderer trail = GetComponent<TrailRenderer>();
         //trail.enabled = false;

@@ -174,8 +174,9 @@ public class WebSocketServerManager : MonoBehaviour
             // Serialize to JSON
             string json = JsonUtility.ToJson(snapshot);
             
-            // Broadcast to all connected agents
-            server.WebServices[endpoint].Sessions.Broadcast(json);
+            // TODO: Broadcast to all connected agents - websocket-sharp API needs adjustment
+            // server.WebServices[endpoint].Sessions.Broadcast(json);
+            Debug.Log($"[WebSocketServer] Would broadcast state: {json.Substring(0, Mathf.Min(100, json.Length))}...");
         }
         catch (Exception ex)
         {
@@ -213,14 +214,14 @@ public class WebSocketServerManager : MonoBehaviour
             position = player.transform.position,
             rotation = player.transform.eulerAngles,
             velocity = player.CharacterController.velocity,
-            health = player.Health?.Value ?? 100,
-            maxHealth = player.Health?.MaxValue ?? 100,
-            currentAmmo = player.PlayerInventory?.GetCurrentAmmo() ?? 0,
-            maxAmmo = player.PlayerInventory?.GetMaxAmmo() ?? 30,
+            health = player.PlayerTakeDamage != null ? player.PlayerTakeDamage.HP.Value : 100,
+            maxHealth = 100, // TODO: Get max health
+            currentAmmo = 30, // TODO: Get actual ammo count
+            maxAmmo = 30, // TODO: Get max ammo
             isReloading = player.PlayerReload?.IsReloading ?? false,
             kills = 0,  // Get from scoreboard or game manager
             deaths = 0,
-            currentWeapon = player.PlayerInventory?.GetCurrentWeaponName() ?? "Unknown",
+            currentWeapon = "Pistol", // TODO: Get current weapon
             isGrounded = player.PlayerController.Grounded,
             movementState = GetMovementState(player)
         };
@@ -253,10 +254,10 @@ public class WebSocketServerManager : MonoBehaviour
                 id = player.GetBotID() ?? player.gameObject.name,
                 position = player.transform.position,
                 rotation = player.transform.eulerAngles,
-                health = player.Health?.Value ?? 100,
+                health = player.PlayerTakeDamage != null ? player.PlayerTakeDamage.HP.Value : 100,
                 distance = distance,
                 isVisible = isVisible,
-                isAlive = player.Health?.Value > 0 ?? false,
+                isAlive = player.PlayerTakeDamage != null ? player.PlayerTakeDamage.HP.Value > 0 : false,
                 lastSeenPosition = isVisible ? player.transform.position : player.transform.position
             });
         }
@@ -275,10 +276,10 @@ public class WebSocketServerManager : MonoBehaviour
         return new GameInfo
         {
             gameMode = "WebSocketAgent",
-            matchTime = timeCounter?.CurrentTime ?? 0,
-            maxMatchTime = timeCounter?.MaxTime ?? 600,
+            matchTime = 0, // TODO: Get from TimePhaseCounter
+            maxMatchTime = 600, // TODO: Get from TimePhaseCounter
             isGameActive = !InGameManager.Instance.IsGameEnd,
-            killLimit = killChecker?.KillLimit ?? 20,
+            killLimit = 20, // TODO: Get from KillCountChecker
             currentMap = "Italy",
             zoneInfo = CaptureZoneInfo()
         };
@@ -296,7 +297,7 @@ public class WebSocketServerManager : MonoBehaviour
         {
             currentZone = player.CurrentZoneData.zoneID.ToString(),
             nearbyZones = GetNearbyZoneIds(player.CurrentZoneData),
-            zoneFullyScanned = player.CurrentZoneData.isChecked
+            zoneFullyScanned = false // TODO: Calculate from InfoPoint isChecked status
         };
     }
     

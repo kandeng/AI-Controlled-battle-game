@@ -156,8 +156,8 @@ public static class CommandRouter
     /// </summary>
     static void ExecuteJump(PlayerRoot player, AgentCommand command)
     {
-        // Trigger jump
-        player.AIInputFeeder.OnJump?.Invoke(true);
+        // TODO: Implement jump when AIInputFeeder API is available
+        // player.AIInputFeeder.OnJump?.Invoke(true);
         
         // Reset after short delay
         CoroutineManager.Instance.StartCoroutine(ResetJumpAfterDelay(player));
@@ -168,11 +168,11 @@ public static class CommandRouter
     /// </summary>
     static void ExecuteReload(PlayerRoot player, AgentCommand command)
     {
-        // Start reload
-        if (player.PlayerReload != null && !player.PlayerReload.IsReloading)
-        {
-            player.PlayerReload.StartReload();
-        }
+        // TODO: Implement reload when PlayerReload API is available
+        // if (player.PlayerReload != null && !player.PlayerReload.IsReloading)
+        // {
+        //     player.PlayerReload.StartReload();
+        // }
     }
     
     /// <summary>
@@ -190,13 +190,13 @@ public static class CommandRouter
     /// </summary>
     static void ExecuteSwitchWeapon(PlayerRoot player, AgentCommand command)
     {
+        // TODO: Implement weapon switch when PlayerInventory API is available
         // command.data.weaponIndex: Which weapon to switch to
-        int weaponIndex = (int)command.data.weaponIndex;
-        
-        if (player.PlayerInventory != null)
-        {
-            player.PlayerInventory.SwitchToWeapon(weaponIndex);
-        }
+        // int weaponIndex = (int)command.data.weaponIndex;
+        // if (player.PlayerInventory != null)
+        // {
+        //     player.PlayerInventory.SwitchToWeapon(weaponIndex);
+        // }
     }
     
     /// <summary>
@@ -214,7 +214,8 @@ public static class CommandRouter
     static IEnumerator ResetJumpAfterDelay(PlayerRoot player)
     {
         yield return new WaitForSeconds(0.1f);
-        player.AIInputFeeder.OnJump?.Invoke(false);
+        // TODO: Reset jump when AIInputFeeder API is available
+        // player.AIInputFeeder.OnJump?.Invoke(false);
     }
     
     /// <summary>
@@ -224,7 +225,7 @@ public static class CommandRouter
     static PlayerRoot GetPlayerForAgent(string agentId)
     {
         // For single agent controlling local player
-        return FindObjectOfType<PlayerRoot>();
+        return GameObject.FindObjectOfType<PlayerRoot>();
     }
 }
 

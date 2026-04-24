@@ -131,10 +131,16 @@ public class PlayerUI : PlayerBehaviour
         NotifyClientsToQuit_ServerRpc();
 
         NetworkManager.Singleton.Shutdown();
-        LobbyManager.Instance.ExitGame();
+
+        // Fixed: Removed LobbyManager - quit application directly
+        #if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+        #else
+        Application.Quit();
+        #endif
 
         // GameSceneManager.Instance.LoadPreviousScene();
-        GameSceneManager.Instance.LoadScene("Lobby Room");
+        // GameSceneManager.Instance.LoadScene("Lobby Room"); // Removed: No longer using lobby
     }
 
     [ServerRpc]
@@ -150,10 +156,16 @@ public class PlayerUI : PlayerBehaviour
         if (!IsOwner)
         {
             NetworkManager.Singleton.Shutdown();
-            LobbyManager.Instance.ExitGame();
+
+            // Fixed: Removed LobbyManager - quit application directly
+            #if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+            #else
+            Application.Quit();
+            #endif
 
             // GameSceneManager.Instance.LoadPreviousScene();
-            GameSceneManager.Instance.LoadScene("Lobby Room");
+            // GameSceneManager.Instance.LoadScene("Lobby Room"); // Removed: No longer using lobby
         }
     }
 

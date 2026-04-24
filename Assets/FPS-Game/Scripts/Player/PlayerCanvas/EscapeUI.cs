@@ -8,7 +8,8 @@ public class EscapeUI : PlayerBehaviour
 
     void Awake()
     {
-        if (!LobbyManager.Instance.IsLobbyHost()) QuitGameButton.gameObject.SetActive(false);
+        // Removed: Lobby check - always show quit button
+        // if (!LobbyManager.Instance.IsLobbyHost()) QuitGameButton.gameObject.SetActive(false);
 
         QuitGameButton.onClick.AddListener(() =>
         {
