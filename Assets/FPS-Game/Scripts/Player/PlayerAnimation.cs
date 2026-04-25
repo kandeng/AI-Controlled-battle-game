@@ -25,7 +25,7 @@ public class PlayerAnimation : PlayerBehaviour
         };
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void UpdateRigBuilder_ServerRPC(bool b)
     {
         UpdateRigBuilder_ClientRPC(b);

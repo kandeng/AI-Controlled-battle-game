@@ -14,7 +14,16 @@
 - [Zone.cs](file://Assets/FPS-Game/Scripts/System/Zone.cs)
 - [TimePhaseCounter.cs](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs)
 - [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
+- [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
+- [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated InGameManager orchestration section to document the critical Unity lifecycle fix
+- Added new subsection on Unity Lifecycle Management explaining the Awake() to Start() transition
+- Updated initialization sequence diagrams to reflect proper component initialization order
+- Enhanced troubleshooting guide with lifecycle-related debugging information
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -95,7 +104,7 @@ InGame --> NV
 - [WIKI.md:31-96](file://WIKI.md#L31-L96)
 
 ## Core Components
-- InGameManager: Central coordinator for game lifecycle, player tracking, NavMesh pathfinding service, and end-of-match aggregation.
+- InGameManager: Central coordinator for game lifecycle, player tracking, NavMesh pathfinding service, and end-of-match aggregation. **Updated**: Now uses proper Unity lifecycle management with initialization moved from Awake() to Start() to prevent race conditions with NetworkManager.Singleton.
 - PlayerNetwork: Manages player identity, stats, and bot differentiation; handles spawn/respawn and server-authoritative synchronization.
 - PlayerController: Dual-mode movement controller supporting human input and AI-driven movement via AIInputFeeder.
 - BotController: Hybrid FSM-BT orchestrator for bot behavior, integrating PerceptionSensor, BlackboardLinker, and ZoneManager.
@@ -162,6 +171,7 @@ Host->>Clients : "PlayerNetwork state sync"
 - Responsibilities: Central coordinator for subsystems, match lifecycle, player tracking, NavMesh pathfinding, and end-of-match aggregation.
 - Key references: TimePhaseCounter, KillCountChecker, HandleSpawnBot, RandomSpawn, ZoneController.
 - Data flows: Receives player spawns, tracks deaths, computes end conditions, and requests player info for the scoreboard.
+- **Updated**: Now uses proper Unity lifecycle management with initialization moved from Awake() to Start() to prevent race conditions with NetworkManager.Singleton.
 
 ```mermaid
 classDiagram
@@ -174,6 +184,9 @@ class InGameManager {
 +ZoneController ZoneController
 +PathFinding(owner, target) Vector2
 +GetAllPlayerInfos()
++InitializeMultiplayerMode()
++InitializeWebSocketMode()
++InitializeSinglePlayerMode()
 }
 class TimePhaseCounter {
 +NetworkVariable~MatchPhase~ currentPhase
@@ -194,6 +207,57 @@ InGameManager --> ZoneController : "initializes"
 **Section sources**
 - [InGameManager.cs:66-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L139)
 - [TimePhaseCounter.cs:73-94](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs#L73-L94)
+
+### Unity Lifecycle Management
+**Critical Update**: The InGameManager now properly manages Unity's component lifecycle to prevent race conditions during initialization.
+
+- **Awake() Phase**: Handles basic component setup and zone initialization
+  - Sets up camera references and instantiates camera prefabs
+  - Locates and initializes core subsystems (TimePhaseCounter, KillCountChecker, etc.)
+  - Initializes zone system with spawn points and portals
+  - Prepares event handlers for game end conditions
+
+- **Start() Phase**: Handles game mode-specific initialization
+  - **Moved from Awake() to Start()** to ensure NetworkManager.Singleton is ready
+  - Initializes based on selected GameMode (Multiplayer, WebSocketAgent, SinglePlayer)
+  - Starts NetworkManager as host when needed
+  - Configures WebSocket server for agent mode
+
+- **Initialization Order Benefits**:
+  - Prevents race conditions with NetworkManager.Singleton
+  - Ensures proper component initialization sequence
+  - Eliminates timing-dependent failures in multiplayer environments
+  - Maintains backward compatibility while fixing critical lifecycle issues
+
+```mermaid
+sequenceDiagram
+participant Scene as "Scene Load"
+participant InGame as "InGameManager"
+participant Spawn as "SpawnInGameManager"
+participant NM as "NetworkManager"
+Scene->>InGame : "Awake()"
+InGame->>InGame : "Basic setup (cameras, subsystems)"
+InGame->>InGame : "Zone initialization"
+Scene->>Spawn : "Awake()"
+Spawn->>NM : "Check NetworkManager.Singleton"
+alt NetworkManager ready
+Spawn->>InGame : "TrySpawn() immediately"
+else NetworkManager not ready
+Spawn->>NM : "Subscribe to OnServerStarted"
+end
+Scene->>InGame : "Start()"
+InGame->>InGame : "Game mode initialization"
+InGame->>NM : "StartHost() if needed"
+InGame->>InGame : "Broadcast OnManagerReady"
+```
+
+**Diagram sources**
+- [InGameManager.cs:101-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L101-L163)
+- [SpawnInGameManager.cs:20-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L20-L69)
+
+**Section sources**
+- [InGameManager.cs:101-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L101-L163)
+- [SpawnInGameManager.cs:20-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L20-L69)
 
 ### Player System: Client-Host Topology
 - PlayerNetwork: Identifies bots vs humans, maps player names, and toggles scripts per ownership; handles spawn/respawn and camera assignment.
@@ -325,8 +389,7 @@ Relay --> NGO["Netcode for GameObjects"]
 - Zone-based spatial reasoning with InfoPoints and PortalPoints minimizes unnecessary computations and improves bot decision quality.
 - Hierarchical pathfinding (Dijkstra at zone level + NavMesh at local level) optimizes long-range routing while preserving precise local navigation.
 - NetworkVariables and NGO minimize bandwidth by synchronizing only essential state.
-
-[No sources needed since this section provides general guidance]
+- **Updated**: Proper Unity lifecycle management prevents initialization overhead and race condition handling costs.
 
 ## Troubleshooting Guide
 - Authentication and Lobby connectivity: Verify Unity Services initialization and anonymous sign-in flow.
@@ -334,6 +397,7 @@ Relay --> NGO["Netcode for GameObjects"]
 - Network synchronization: Ensure PlayerNetwork enables/disables scripts per ownership and toggles camera assignment.
 - Bot behavior: Validate BlackboardLinker binding to active Behavior and SharedVariable updates.
 - Zone scanning: Confirm InfoPoint visibility calculations and zone fully-scanned events.
+- **Updated**: Unity lifecycle issues: If experiencing initialization failures or NetworkManager.Singleton null exceptions, verify that InGameManager is properly transitioning from Awake() to Start() phase and that NetworkManager is fully initialized before game mode initialization.
 
 **Section sources**
 - [LobbyManager.cs:86-104](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L86-L104)
@@ -343,9 +407,7 @@ Relay --> NGO["Netcode for GameObjects"]
 - [PerceptionSensor.cs:179-178](file://Assets/FPS-Game/Scripts/Bot/PerceptionSensor.cs#L179-L178)
 
 ## Conclusion
-The system employs a robust server-authoritative architecture with a client-host topology, integrating Unity Gaming Services for matchmaking, connectivity, and session management. The hybrid FSM-BT AI architecture, combined with zone-based spatial reasoning and hierarchical pathfinding, delivers scalable and deterministic bot behavior. The layered design, clear component responsibilities, and server-authoritative synchronization provide a solid foundation for multiplayer FPS gameplay.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The system employs a robust server-authoritative architecture with a client-host topology, integrating Unity Gaming Services for matchmaking, connectivity, and session management. The hybrid FSM-BT AI architecture, combined with zone-based spatial reasoning and hierarchical pathfinding, delivers scalable and deterministic bot behavior. The layered design, clear component responsibilities, and server-authoritative synchronization provide a solid foundation for multiplayer FPS gameplay. **Updated**: The recent Unity lifecycle fix ensures reliable initialization order and prevents race conditions, making the system more stable in multiplayer environments.
 
 ## Appendices
 
@@ -368,3 +430,16 @@ The system employs a robust server-authoritative architecture with a client-host
 **Section sources**
 - [WIKI.md:617-633](file://WIKI.md#L617-L633)
 - [LobbyManager.cs:545-569](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs#L545-L569)
+
+### Game Modes and Initialization
+**Updated**: The system supports multiple operational modes with proper lifecycle management:
+
+- **Multiplayer Mode**: Traditional Unity Gaming Services integration with authentication, lobby, relay, and NGO
+- **WebSocketAgent Mode**: Direct AI agent control without networking services, using WebSocket communication
+- **SinglePlayer Mode**: Local testing mode that starts NetworkManager as host for development and testing
+
+Each mode follows the proper Unity lifecycle with NetworkManager initialization occurring in the Start() phase to prevent race conditions.
+
+**Section sources**
+- [GameMode.cs:1-21](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L1-L21)
+- [InGameManager.cs:145-209](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L145-L209)

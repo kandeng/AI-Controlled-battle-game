@@ -63,8 +63,6 @@ public class PlayerModel : PlayerBehaviour
 
     public void OnPlayerDead()
     {
-        Debug.Log("Die animation");
-        // PlayerAni.Animator.applyRootMotion = true;
         PlayerAni.Animator.Play("FallingForwardDeath", 0, 0f);
 
         ChangeModelVisibility(true);
@@ -72,8 +70,6 @@ public class PlayerModel : PlayerBehaviour
 
     public void OnPlayerRespawn()
     {
-        Debug.Log("Restart animation");
-
         PlayerAni.Animator.Play("Idle and Run", 0, 0f);
         transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
         // PlayerAni.Animator.applyRootMotion = false;

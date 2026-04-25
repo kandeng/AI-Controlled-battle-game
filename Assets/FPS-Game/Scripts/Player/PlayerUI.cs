@@ -92,7 +92,7 @@ public class PlayerUI : PlayerBehaviour
         manager.OnGameEnd += () =>
         {
             manager.GetAllPlayerInfos();
-            PlayerRoot.PlayerAssetsInputs.IsInputEnabled = false;
+            // Input is AI-driven; no IsInputEnabled to disable
             CurrentPlayerCanvas.PlayEndGameFadeOut(() =>
             {
                 QuitGame();
@@ -105,7 +105,7 @@ public class PlayerUI : PlayerBehaviour
         AddTakeDamageEffect_ServerRpc(damage, targetClientId);
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void AddTakeDamageEffect_ServerRpc(float damage, ulong targetClientId)
     {
         ClientRpcParams clientRpcParams = new ClientRpcParams

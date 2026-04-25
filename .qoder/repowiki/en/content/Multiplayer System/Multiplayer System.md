@@ -9,17 +9,16 @@
 - [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
 - [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
 - [Play Scene.unity](file://Assets/FPS-Game/Scenes/MainScenes/Play Scene.unity)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
 - [README_WEBSOCKET_INSTALLATION.md](file://Assets/FPS-Game/Scripts/System/WebSocket/README_WEBSOCKET_INSTALLATION.md)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Complete removal of Unity Gaming Services integration (Lobby, Relay, Authentication)
-- Replacement with direct peer-to-peer connections via Unity Netcode for GameObjects
-- Updated documentation to reflect new single-scene Play.unity approach
-- Simplified multiplayer setup procedures without external service dependencies
-- Removed WebSocket Agent mode and related components
-- Streamlined architecture to server-authoritative model with direct networking
+- Updated initialization sequence documentation to reflect the fix where InGameManager initialization moved from Awake() to Start() method
+- Clarified the timing resolution for NetworkManager.Singleton availability
+- Enhanced server-authoritative initialization patterns documentation
+- Updated troubleshooting guidance for initialization timing issues
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -35,18 +34,18 @@
 11. [Appendices](#appendices)
 
 ## Introduction
-This document explains the multiplayer system built with Unity Netcode for GameObjects, now updated for a simplified direct peer-to-peer architecture. The system implements a server-authoritative model without Unity Gaming Services dependencies, focusing on streamlined setup procedures and direct networking through Unity Netcode. The system supports multiple game modes including traditional multiplayer and single-player testing scenarios. It documents server-authoritative gameplay with client interpolation and state synchronization patterns. Practical examples demonstrate networked object spawning, player synchronization, and event broadcasting across clients using the new single-scene Play.unity approach.
+This document explains the multiplayer system built with Unity Netcode for GameObjects, now updated for a simplified direct peer-to-peer architecture with improved initialization timing. The system implements a server-authoritative model without Unity Gaming Services dependencies, focusing on streamlined setup procedures and direct networking through Unity Netcode. The system supports multiple game modes including traditional multiplayer and single-player testing scenarios. It documents server-authoritative gameplay with client interpolation and state synchronization patterns. The recent improvement addresses timing issues where NetworkManager.Awake() was executing after InGameManager.Awake(), causing NetworkManager.Singleton to be null during initialization. Now uses Start() method for game mode initialization to ensure proper NetworkManager availability.
 
-**Updated** Complete removal of Unity Gaming Services integration and replacement with direct peer-to-peer connections via Unity Netcode for GameObjects.
+**Updated** Improved initialization sequence in InGameManager.cs to resolve timing conflicts with NetworkManager singleton availability.
 
 ## Project Structure
 The multiplayer system now operates with a simplified architecture focused on Unity Netcode for GameObjects:
 - **Networking foundation**: Direct peer-to-peer connections through Unity Netcode with NetworkObject and NetworkVariable
-- **Server-authoritative orchestration**: Centralized gameplay state management through InGameManager
+- **Server-authoritative orchestration**: Centralized gameplay state management through InGameManager with proper initialization timing
 - **Player lifecycle**: Per-character state via NetworkVariable and server RPCs for synchronization
 - **Direct networking**: Elimination of Unity Gaming Services dependencies in favor of native Netcode networking
 - **Single-scene approach**: Play.unity as the sole scene for simplified setup procedures
-- **Early spawn system**: Server-side initialization of InGameManager for deterministic gameplay
+- **Early spawn system**: Server-side initialization of InGameManager for deterministic gameplay with proper timing
 
 ```mermaid
 graph TB
@@ -58,19 +57,18 @@ IG["InGameManager"]
 PIN["PlayerNetwork"]
 SPIN["SpawnInGameManager"]
 END
-subgraph "Simplified Architecture"
-PS["Play Scene.unity"]
-NS["Network Settings"]
-DP["Direct Prefabs"]
-end
+subgraph "Improved Initialization Sequence"
+AWAKE["Awake() - Basic Setup"]
+START["Start() - Game Mode Init"]
+INIT["InitializeMultiplayerMode()"]
+END
 NM --> NO
 NO --> PIN
 NO --> IG
 IG --> PIN
 SPIN --> IG
-PS --> NM
-NS --> NM
-DP --> NO
+AWAKE --> START
+START --> INIT
 ```
 
 **Diagram sources**
@@ -87,8 +85,8 @@ DP --> NO
 
 ## Core Components
 - **PlayerNetwork**: Per-player state and behavior with server-authoritative synchronization using NetworkVariable
-- **InGameManager**: Server-authoritative gameplay manager with NetworkVariable-based shared state and RPC patterns
-- **SpawnInGameManager**: Server-side spawn of InGameManager for deterministic initialization
+- **InGameManager**: Server-authoritative gameplay manager with NetworkVariable-based shared state and RPC patterns, now with improved initialization timing
+- **SpawnInGameManager**: Server-side spawn of InGameManager for deterministic initialization with proper NetworkManager availability
 - **Direct peer-to-peer networking**: Native Unity Netcode implementation without Unity Gaming Services
 - **Single-scene architecture**: Play.unity as the central scene eliminating complex scene management
 - **NetworkVariable replication**: Automatic state synchronization for kills, deaths, and game state
@@ -99,6 +97,7 @@ Key patterns:
 - **NetworkObject**: All networked objects derive from NetworkObject; NetworkVariable encapsulates replicated state
 - **RPC patterns**: ServerRpc for authoritative commands and ClientRpc for targeted updates
 - **Simplified setup**: Single scene approach eliminates complex lobby and relay configurations
+- **Improved initialization timing**: InGameManager now properly waits for NetworkManager availability
 
 **Section sources**
 - [PlayerNetwork.cs:12-216](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L216)
@@ -106,12 +105,13 @@ Key patterns:
 - [SpawnInGameManager.cs:5-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L5-L69)
 
 ## Architecture Overview
-The system follows a streamlined server-authoritative model with direct peer-to-peer connections:
-- **Server spawns InGameManager early** and maintains authoritative state
+The system follows a streamlined server-authoritative model with direct peer-to-peer connections and improved initialization timing:
+- **Server spawns InGameManager early** and maintains authoritative state with proper NetworkManager availability
 - **Clients connect directly** through Unity Netcode without Unity Gaming Services
 - **Player actions are processed server-authoritatively**; clients interpolate movement locally
 - **Single scene architecture** simplifies deployment and reduces complexity
 - **Direct networking eliminates** external service dependencies and relay configurations
+- **Improved initialization timing** ensures NetworkManager.Singleton is available during InGameManager startup
 
 ```mermaid
 sequenceDiagram
@@ -119,9 +119,10 @@ participant Client as "Client"
 participant Server as "Server"
 participant InGame as "InGameManager"
 participant Player as "PlayerNetwork"
-Note over Client,Server : Direct Peer-to-Peer Flow
+Note over Client,Server : Improved Direct Peer-to-Peer Flow
 Client->>Server : Direct Netcode connection
 Server->>InGame : Spawn InGameManager (NetworkObject)
+Note over InGame : Awake() - Basic setup<br/>Start() - Wait for NetworkManager<br/>InitializeMultiplayerMode()
 InGame-->>Client : InGameManager ready (NetworkVariable)
 Client->>Player : Spawn player (NetworkObject)
 Player->>Server : MappingValues_ServerRpc(playerID)
@@ -133,7 +134,7 @@ Client->>Client : Interpolate movement locally
 ```
 
 **Diagram sources**
-- [InGameManager.cs:192-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L192-L295)
+- [InGameManager.cs:101-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L101-L163)
 - [PlayerNetwork.cs:184-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L184-L195)
 - [SpawnInGameManager.cs:40-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L40-L69)
 
@@ -173,12 +174,13 @@ PlayerNetwork --> InGameManager : "RPC calls"
 **Section sources**
 - [PlayerNetwork.cs:12-216](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L216)
 
-### InGameManager: Server-Authoritative Gameplay Manager
-InGameManager is a NetworkBehaviour that orchestrates server-authoritative gameplay:
+### InGameManager: Server-Authoritative Gameplay Manager with Improved Timing
+InGameManager is a NetworkBehaviour that orchestrates server-authoritative gameplay with improved initialization timing:
 - **NetworkVariable** for shared state (e.g., IsTimeOut)
 - **RPC pattern** for cross-client broadcasts:
   - GetAllPlayerInfos_ServerRPC aggregates player info from connected clients
   - GetAllPlayerInfos_ClientRPC parses and dispatches the aggregated data to listeners
+- **Improved initialization**: Moved game mode initialization from Awake() to Start() method to ensure NetworkManager.Singleton is available
 - **Simplified initialization**: Direct server-side spawn without Unity Gaming Services dependencies
 - **Utility methods** for pathfinding and zone management
 
@@ -193,16 +195,19 @@ Common --> Ready["OnNetworkSpawn()"]
 SPInit --> Ready
 ```
 
+**Updated** The initialization sequence now properly handles NetworkManager availability timing.
+
 **Diagram sources**
-- [InGameManager.cs:101-191](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L101-L191)
+- [InGameManager.cs:101-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L101-L163)
 
 **Section sources**
 - [InGameManager.cs:66-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L295)
 
 ### SpawnInGameManager: Early Server Spawn of InGameManager
-Ensures the in-game manager exists before gameplay begins:
+Ensures the in-game manager exists before gameplay begins with proper NetworkManager handling:
 - Subscribes to NetworkManager.OnServerStarted
 - Instantiates the InGameManager prefab and spawns it as a NetworkObject
+- Handles cases where NetworkManager may not be fully initialized yet
 - Eliminates Unity Gaming Services dependencies for simplified setup
 
 ```mermaid
@@ -229,6 +234,7 @@ Spawn --> Log["Log success"]
 - **ServerRpc for authoritative commands**: PlayerNetwork.MappingValues_ServerRpc sets player name directly
 - **ClientRpc for targeted updates**: InGameManager.GetAllPlayerInfos_ClientRPC delivers aggregated player info to the requester
 - **Direct peer-to-peer**: Elimination of Unity Gaming Services relay and authentication dependencies
+- **Improved timing**: NetworkManager availability is guaranteed before InGameManager initialization
 
 ```mermaid
 sequenceDiagram
@@ -277,7 +283,7 @@ Direct prefab registration for simplified networking:
 
 ## Dependency Analysis
 - **PlayerNetwork** depends on InGameManager for RPCs and direct player naming
-- **InGameManager** depends on NetworkManager for client enumeration and RPC routing
+- **InGameManager** depends on NetworkManager for client enumeration and RPC routing, with improved timing guarantees
 - **SpawnInGameManager** depends on NetworkManager and InGameManager prefab registration
 - **Direct peer-to-peer**: Elimination of Unity Gaming Services dependencies
 - **Single scene architecture**: Play.unity as the central scene for simplified deployment
@@ -294,12 +300,14 @@ PN["PlayerNetwork"]
 IG["InGameManager"]
 SPM["SpawnInGameManager"]
 PS["Play Scene.unity"]
+NM["NetworkManager"]
 DNP --> PN
 DNP --> IG
 NFG --> PN
 NFG --> IG
 MPM --> NFG
 SPM --> IG
+NM --> IG
 PN --> IG
 PS --> PN
 PS --> IG
@@ -332,28 +340,32 @@ PS --> IG
 - **Direct peer-to-peer connections** eliminate relay latency and improve responsiveness
 - **Optimize prefab loading** through NetcodeForGameObjects asset configuration
 - **Configure MultiplayerManager roles** appropriately for deployment scenarios
+- **Improved initialization timing** prevents runtime errors and reduces debugging overhead
 
 ## Troubleshooting Guide
 Common issues and remedies:
 - **Player name not synchronizing**: Verify MappingValues_ServerRpc is invoked with correct playerID and that the player object has NetworkObject component
-- **InGameManager not ready**: Ensure SpawnInGameManager runs on the server and subscribes to OnServerStarted; confirm the prefab has a NetworkObject
+- **InGameManager not ready**: Ensure SpawnInGameManager runs on the server and subscribes to OnServerStarted; confirm the prefab has a NetworkObject; verify NetworkManager availability timing
 - **RPC not received**: Confirm ServerRpc RequireOwnership setting and ClientRpc targeting; ensure the requesting client is included in ClientRpcParams
 - **Direct peer-to-peer connection issues**: Verify NetworkManager is properly configured and clients can establish direct connections
 - **Single scene deployment problems**: Ensure Play Scene.unity is set as the active scene and contains all necessary networking components
 - **MultiplayerManager configuration errors**: Ensure proper role-based networking setup for deployment scenarios
 - **NetcodeForGameObjects asset issues**: Verify prefab paths and automatic prefab generation settings
 - **DefaultNetworkPrefabs errors**: Check that all networked objects have proper NetworkObject components registered
+- **Initialization timing issues**: Verify that InGameManager.Start() method runs after NetworkManager is fully initialized; check for proper Awake() vs Start() execution order
+
+**Updated** Added troubleshooting guidance for initialization timing issues and NetworkManager availability.
 
 **Section sources**
 - [PlayerNetwork.cs:184-195](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L184-L195)
 - [SpawnInGameManager.cs:40-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L40-L69)
-- [InGameManager.cs:192-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L192-L295)
+- [InGameManager.cs:145-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L145-L163)
 - [MultiplayerManager.asset:1-10](file://ProjectSettings/MultiplayerManager.asset#L1-L10)
 - [NetcodeForGameObjects.asset:1-18](file://ProjectSettings/NetcodeForGameObjects.asset#L1-L18)
 - [DefaultNetworkPrefabs.asset:1-72](file://Assets/DefaultNetworkPrefabs.asset#L1-L72)
 
 ## Conclusion
-The system implements a streamlined server-authoritative model with direct peer-to-peer connections through Unity Netcode for GameObjects. PlayerNetwork and InGameManager coordinate authoritative state and client interpolation without Unity Gaming Services dependencies. The simplified architecture eliminates complex lobby and relay configurations in favor of direct networking through Play Scene.unity. The provided patterns enable scalable, predictable multiplayer behavior with improved performance and simplified deployment procedures.
+The system implements a streamlined server-authoritative model with direct peer-to-peer connections through Unity Netcode for GameObjects. PlayerNetwork and InGameManager coordinate authoritative state and client interpolation without Unity Gaming Services dependencies. The recent improvement addresses timing issues where NetworkManager.Awake() was executing after InGameManager.Awake(), causing NetworkManager.Singleton to be null during initialization. By moving game mode initialization from Awake() to Start() method, the system now properly ensures NetworkManager availability. The simplified architecture eliminates complex lobby and relay configurations in favor of direct networking through Play Scene.unity. The provided patterns enable scalable, predictable multiplayer behavior with improved performance and simplified deployment procedures.
 
 ## Appendices
 
@@ -366,6 +378,8 @@ The system implements a streamlined server-authoritative model with direct peer-
   - Aggregate and broadcast player info: [InGameManager.cs:209-235](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L209-L235)
 - **Direct peer-to-peer connection**:
   - Unity Netcode direct connection: [InGameManager.cs:192-295](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L192-L295)
+- **Improved initialization timing**:
+  - NetworkManager availability check: [InGameManager.cs:145-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L145-L163)
 - **Simplified configuration**:
   - MultiplayerManager setup: [MultiplayerManager.asset:1-10](file://ProjectSettings/MultiplayerManager.asset#L1-L10)
   - NetcodeForGameObjects configuration: [NetcodeForGameObjects.asset:1-18](file://ProjectSettings/NetcodeForGameObjects.asset#L1-L18)

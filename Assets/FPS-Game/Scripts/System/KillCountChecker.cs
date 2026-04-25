@@ -25,7 +25,7 @@ public class KillCountChecker : NetworkBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void NotifyGameEnd_ServerRpc()
     {
         NotifyGameEnd_ClientRpc();

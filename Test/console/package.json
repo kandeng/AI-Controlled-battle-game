@@ -1,0 +1,12 @@
+{
+  "name": "unity-console-client",
+  "version": "1.0.0",
+  "description": "Interactive console for controlling Unity FPS game via WebSocket",
+  "scripts": {
+    "start": "node console.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "license": "MIT"
+}

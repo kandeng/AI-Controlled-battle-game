@@ -13,7 +13,7 @@ using UnityEngine;
 public class AgentCommand
 {
     /// <summary>
-    /// Command type: MOVE, LOOK, SHOOT, JUMP, RELOAD, STOP, SWITCH_WEAPON
+    /// Command type: MOVE, LOOK, SHOOT, RELOAD, STOP, SWITCH_WEAPON, AIM, SET_VIEW
     /// </summary>
     public string commandType;
     
@@ -50,7 +50,15 @@ public class CommandData
     public float duration;  // How long to execute (seconds)
     
     // For SWITCH_WEAPON command
-    public float weaponIndex;  // Which weapon to switch to
+    public int weaponIndex;  // Which weapon to switch to (0-based)
+    
+    // For AIM command
+    public bool active;  // true = enter ADS, false = exit ADS
+
+    // For SET_VIEW command
+    // agentId (top-level field in AgentCommand) identifies whose view to follow.
+    // When omitted, the view follows the agent that sends the command.
+    public string viewTargetAgentId;  // Optional: target a different agent's view
     
     /// <summary>
     /// Helper property to get direction vector

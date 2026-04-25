@@ -7,7 +7,6 @@ public class PlayerCollision : PlayerBehaviour
     {
         if (other.CompareTag("HealthPickup"))
         {
-            Debug.Log("Pick up health");
             PlayerRoot.Events.InvokeOnCollectedHealthPickup();
             Destroy(other.gameObject);
         }

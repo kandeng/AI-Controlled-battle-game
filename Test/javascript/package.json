@@ -1,0 +1,17 @@
+{
+  "name": "unity-websocket-test-client",
+  "version": "1.0.0",
+  "description": "WebSocket client scripts for Unity FPS game",
+  "scripts": {
+    "single": "node single_agent.js",
+    "dual":   "node dual_agents.js",
+    "dual-agent01": "node dual_agents.js --agent agent_01",
+    "dual-agent02": "node dual_agents.js --agent agent_02"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "keywords": ["unity", "websocket", "fps", "game"],
+  "author": "",
+  "license": "MIT"
+}

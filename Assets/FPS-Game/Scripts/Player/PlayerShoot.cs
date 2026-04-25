@@ -77,7 +77,7 @@ public class PlayerShoot : PlayerBehaviour
     }
 
     // HandleServerShoot_ServerRPC xử lí tín hiệu bắn và xét xem có bắn trúng mục tiêu nào hay không, nếu có thì gọi tới hàm TakeDamage (server) 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void HandleServerShoot_ServerRPC(
         Vector3 point,
         Vector3 shootDirection,
@@ -106,10 +106,7 @@ public class PlayerShoot : PlayerBehaviour
                 if (player.TryGetComponent<PlayerRoot>(out var playerTargetRoot))
                 {
                     if (playerTargetRoot.OwnerClientId == shooterClientId && playerTargetRoot.NetworkObjectId == shooterNetworkObjectId)
-                    {
-                        Debug.Log("Self-shoot");
                         return;
-                    }
 
                     HitArea hitArea;
                     if (hit.transform.CompareTag("PlayerHead"))
@@ -119,17 +116,12 @@ public class PlayerShoot : PlayerBehaviour
                     else if (hit.transform.CompareTag("PlayerLeg"))
                         hitArea = HitArea.Leg;
                     else
-                    {
-                        Debug.Log("Player part unvalid");
                         return;
-                    }
 
                     float damage = GetDamageByWeaponAndHitArea(gunType, hitArea);
 
                     if (damage > 0)
                     {
-                        // Nếu bắn trúng bot thì lấy NetworkObjectId của bot, còn nếu bắn trong player khác thì lấy OwnerClientId
-                        // shooterClientId lấy như bình thường (trong tương lai thêm logic điều khiển bot sẽ có TH bot bắn trúng player khác)
                         player.GetComponent<PlayerTakeDamage>().TakeDamage(
                             damage,
                             playerTargetRoot.IsCharacterBot() ?
@@ -137,8 +129,6 @@ public class PlayerShoot : PlayerBehaviour
                             shooterClientId,
                             playerTargetRoot.IsCharacterBot()
                         );
-
-                        Debug.Log($"Gun: {gunType}, damage: {damage}");
                     }
                 }
             }

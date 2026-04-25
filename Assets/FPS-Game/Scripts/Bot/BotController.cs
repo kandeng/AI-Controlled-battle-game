@@ -105,7 +105,7 @@ namespace AIBot
             botTactics.OnZoneFullyScanned += () =>
             {
                 blackboardLinker.SetScanAllArea(true);
-                Debug.Log("Current zone is fully scanned!");
+                // Current zone fully scanned — trigger tactics update
             };
         }
 
@@ -245,7 +245,7 @@ namespace AIBot
             switch (newState)
             {
                 case State.Idle:
-                    Debug.Log("Entering Idle State");
+                    // Entering Idle State
                     
                     blackboardLinker.SetTargetPlayer(null);
                     sensor.SetTargetPlayerTransform(null);

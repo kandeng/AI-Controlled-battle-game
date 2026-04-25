@@ -9,10 +9,16 @@
 - [GameSceneManager.cs](file://Assets/FPS-Game/Scripts/GameSceneManager.cs)
 - [TimePhaseCounter.cs](file://Assets/FPS-Game/Scripts/System/TimePhaseCounter.cs)
 - [KillCountChecker.cs](file://Assets/FPS-Game/Scripts/System/KillCountChecker.cs)
-- [LobbyRelayChecker.cs](file://Assets/FPS-Game/Scripts/System/LobbyRelayChecker.cs)
 - [HandleSpawnBot.cs](file://Assets/FPS-Game/Scripts/System/HandleSpawnBot.cs)
 - [PlayerUI.cs](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated initialization flow documentation to reflect the corrected sequence where all Awake() methods complete before Start() executes
+- Added detailed explanation of NetworkManager.Singleton initialization timing
+- Enhanced architecture overview to show proper initialization sequence
+- Updated troubleshooting section with timing conflict resolution guidance
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -27,14 +33,14 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the match lifecycle management system that orchestrates the flow from lobby setup through gameplay termination. It focuses on the central coordinator role of InGameManager, covering initialization phases, player registration, spawn point management, tactical zone setup, camera management, and graceful shutdown. It also documents the state machine implementation for match phases (pre-game setup, active gameplay, post-match cleanup), network synchronization during state changes, camera transitions, and resource cleanup procedures. Practical examples are referenced from the actual codebase to illustrate how the system coordinates with SpawnInGameManager for location setup and ZoneController for tactical area initialization.
+This document explains the match lifecycle management system that orchestrates the flow from lobby setup through gameplay termination. It focuses on the central coordinator role of InGameManager, covering initialization phases, player registration, spawn point management, tactical zone setup, camera management, and graceful shutdown. The system has been updated to ensure proper initialization sequence where all Awake() methods complete before Start() executes, guaranteeing NetworkManager.Singleton is initialized before game mode setup begins. It also documents the state machine implementation for match phases (pre-game setup, active gameplay, post-match cleanup), network synchronization during state changes, camera transitions, and resource cleanup procedures. Practical examples are referenced from the actual codebase to illustrate how the system coordinates with SpawnInGameManager for location setup and ZoneController for tactical area initialization.
 
 ## Project Structure
 The match lifecycle spans several managers and systems:
-- InGameManager: Central coordinator for match state, camera management, player info collection, and lifecycle events.
+- InGameManager: Central coordinator for match state, camera management, player info collection, and lifecycle events. Now properly sequences initialization to ensure NetworkManager.Singleton availability.
 - SpawnInGameManager: Ensures InGameManager is instantiated early on the server and provides spawn positions, waypoints, tactical points, and zones.
 - ZoneController: Initializes and manages tactical zones and portals for navigation and AI pathing.
-- Supporting managers: TimePhaseCounter, KillCountChecker, LobbyRelayChecker, HandleSpawnBot.
+- Supporting managers: TimePhaseCounter, KillCountChecker, HandleSpawnBot.
 - Player-facing UI: Subscribes to InGameManager events to update timers and leaderboard-like displays.
 
 ```mermaid
@@ -43,7 +49,6 @@ SGM["SpawnInGameManager.cs<br/>Ensures InGameManager spawn"] --> IG["InGameManag
 IG --> ZC["ZoneController.cs<br/>InitZones(...)"]
 IG --> TPC["TimePhaseCounter.cs<br/>Match timer"]
 IG --> KCC["KillCountChecker.cs<br/>Win condition"]
-IG --> LRC["LobbyRelayChecker.cs<br/>Lobby sync"]
 IG --> HSB["HandleSpawnBot.cs<br/>Bot spawning"]
 IG --> PU["PlayerUI.cs<br/>Subscribes to events"]
 IG --> GMSCN["GameSceneManager.cs<br/>Scene transitions"]
@@ -70,6 +75,7 @@ IG --> GMSCN["GameSceneManager.cs<br/>Scene transitions"]
   - Navigation and tactical zone integration via ZoneController.
   - Event hooks for match end and player death notifications.
   - Pathfinding helper for AI movement using NavMesh.
+  - **Updated**: Proper initialization sequence ensuring NetworkManager.Singleton availability before game mode setup.
 
 - SpawnInGameManager
   - Early instantiation of InGameManager on server startup.
@@ -81,11 +87,10 @@ IG --> GMSCN["GameSceneManager.cs<br/>Scene transitions"]
 - Supporting Managers
   - TimePhaseCounter: Tracks match time and emits OnTimeChanged events.
   - KillCountChecker: Enforces win conditions based on kill counts.
-  - LobbyRelayChecker: Coordinates lobby-to-game transitions.
   - HandleSpawnBot: Manages bot spawning logic.
 
 - PlayerInfo
-  - Structured representation of player statistics used by InGameManager’s RPC pipeline.
+  - Structured representation of player statistics used by InGameManager's RPC pipeline.
 
 **Section sources**
 - [InGameManager.cs:66-232](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L66-L232)
@@ -94,7 +99,7 @@ IG --> GMSCN["GameSceneManager.cs<br/>Scene transitions"]
 - [PlayerInfo.cs:10-52](file://Assets/FPS-Game/Scripts/PlayerInfo.cs#L10-L52)
 
 ## Architecture Overview
-The lifecycle begins when the server starts and SpawnInGameManager ensures InGameManager exists. InGameManager initializes child managers, camera systems, and zone configuration. During gameplay, InGameManager coordinates time, win conditions, player info collection, and bot spawning. UI subscribes to events for live updates. At match end, InGameManager triggers cleanup and scene transitions.
+The lifecycle begins when the server starts and SpawnInGameManager ensures InGameManager exists. **Updated**: The system now guarantees proper initialization sequence where all Awake() methods complete before Start() executes, ensuring NetworkManager.Singleton is available for game mode setup. InGameManager initializes child managers, camera systems, and zone configuration. During gameplay, InGameManager coordinates time, win conditions, player info collection, and bot spawning. UI subscribes to events for live updates. At match end, InGameManager triggers cleanup and scene transitions.
 
 ```mermaid
 sequenceDiagram
@@ -105,10 +110,12 @@ participant ZC as "ZoneController"
 participant UI as "PlayerUI"
 Server->>SGM : "Awake()"
 SGM->>IG : "Instantiate and Spawn NetworkObject"
+Note over SGM,IG : "Awake() completes - NetworkManager.Singleton available"
 IG->>IG : "Awake() initialize managers"
 IG->>ZC : "InitZones(zonesContainer, portals)"
 IG-->>UI : "OnManagerReady event"
 UI->>IG : "Subscribe to OnReceivedPlayerInfo"
+IG->>IG : "Start() - Initialize game mode with NetworkManager.Singleton"
 IG->>IG : "OnNetworkSpawn() fire OnManagerReady"
 Note over IG,ZC : "Match active phase"
 IG-->>UI : "OnReceivedPlayerInfo(playerInfos)"
@@ -132,9 +139,10 @@ Responsibilities:
 - Player info collection via ServerRpc/ClientRpc.
 - Pathfinding helper for AI movement.
 - Event hooks for match end and player deaths.
+- **Updated**: Proper initialization sequence ensuring NetworkManager.Singleton availability.
 
 Key behaviors:
-- Initialization: Finds SpawnInGameManager, instantiates cameras, and initializes child managers. Calls ZoneController.InitZones with containers from SpawnInGameManager.
+- **Updated**: Initialization: Awake() method now handles camera instantiation and basic manager setup. Start() method handles game mode initialization, ensuring NetworkManager.Singleton is available.
 - Network synchronization: GetAllPlayerInfos triggers a ServerRpc that aggregates per-client stats and sends them back via ClientRpc to the requester. UI subscribes to OnReceivedPlayerInfo to update displays.
 - Camera management: Stores references to PlayerCamera and PlayerFollowCamera for later transitions.
 - Pathfinding: Calculates NavMesh path and returns normalized movement direction for AI.
@@ -303,8 +311,8 @@ UI->>IG : "Subscribe to TimePhaseCounter.OnTimeChanged"
 
 ### State Machine Implementation
 Conceptual phases:
-- Pre-game setup: SpawnInGameManager ensures InGameManager exists; InGameManager initializes managers, cameras, and zones.
-- Active gameplay: TimePhaseCounter runs, KillCountChecker enforces win conditions, LobbyRelayChecker handles transitions, HandleSpawnBot spawns bots, and InGameManager collects player info.
+- Pre-game setup: SpawnInGameManager ensures InGameManager exists; InGameManager initializes managers, cameras, and zones. **Updated**: All Awake() methods complete before Start() executes, ensuring NetworkManager.Singleton availability.
+- Active gameplay: TimePhaseCounter runs, KillCountChecker enforces win conditions, HandleSpawnBot spawns bots, and InGameManager collects player info.
 - Post-match cleanup: OnGameEnd sets IsGameEnd flag; UI and managers react to terminate sessions and prepare for scene transitions.
 
 ```mermaid
@@ -322,7 +330,7 @@ Cleanup --> [*]
 - InGameManager depends on:
   - SpawnInGameManager for spawn positions, waypoints, tactical points, and zones/portals containers.
   - ZoneController for tactical zone initialization.
-  - Child managers (TimePhaseCounter, KillCountChecker, LobbyRelayChecker, HandleSpawnBot) for gameplay logic.
+  - Child managers (TimePhaseCounter, KillCountChecker, HandleSpawnBot) for gameplay logic.
 - UI depends on InGameManager events for live updates.
 
 ```mermaid
@@ -331,7 +339,6 @@ SGM["SpawnInGameManager"] --> IG["InGameManager"]
 IG --> ZC["ZoneController"]
 IG --> TPC["TimePhaseCounter"]
 IG --> KCC["KillCountChecker"]
-IG --> LRC["LobbyRelayChecker"]
 IG --> HSB["HandleSpawnBot"]
 IG --> UI["PlayerUI"]
 ```
@@ -350,8 +357,7 @@ IG --> UI["PlayerUI"]
 - Efficient pathfinding: Cache NavMesh queries where appropriate and avoid recalculating paths unnecessarily.
 - Camera transitions: Keep camera switching logic lightweight to reduce frame-time spikes.
 - Zone initialization: Ensure ZonesContainer and ZonePortalsContainer are populated once and reused.
-
-[No sources needed since this section provides general guidance]
+- **Updated**: Initialization timing: The corrected sequence ensures NetworkManager.Singleton is available during Start() execution, preventing timing conflicts and initialization failures.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -360,8 +366,9 @@ Common issues and resolutions:
   - Verify OnReceivedPlayerInfo subscribers are attached after OnManagerReady fires.
   - Reference: [InGameManager.cs:141-194](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L141-L194)
 
-- Timing conflicts during transitions
+- **Updated**: Timing conflicts during transitions
   - Use OnManagerReady to gate UI subscriptions and gameplay logic.
+  - **Critical**: The corrected initialization flow ensures all Awake() methods complete before Start() executes, guaranteeing NetworkManager.Singleton availability.
   - Reference: [InGameManager.cs:129-133](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L129-L133), [PlayerUI.cs:66-85](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L66-L85)
 
 - Proper cleanup of network objects
@@ -376,6 +383,11 @@ Common issues and resolutions:
   - Ensure SpawnInGameManager provides valid ZonesContainer and ZonePortalsContainer to InGameManager.InitZones.
   - Reference: [InGameManager.cs:124-127](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L124-L127), [ZoneController.cs:13-18](file://Assets/FPS-Game/Scripts/System/ZoneController.cs#L13-L18)
 
+- **Updated**: NetworkManager initialization issues
+  - **Critical**: The system now ensures proper initialization sequence. If NetworkManager.Singleton is null during Start(), verify that SpawnInGameManager successfully spawned InGameManager before Start() executes.
+  - Check that NetworkManager prefab is present in the scene and properly configured.
+  - Reference: [InGameManager.cs:145-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L145-L163), [SpawnInGameManager.cs:20-38](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L20-L38)
+
 **Section sources**
 - [InGameManager.cs:129-139](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L129-L139)
 - [InGameManager.cs:141-194](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L141-L194)
@@ -383,11 +395,11 @@ Common issues and resolutions:
 - [InGameManager.cs:106-108](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L106-L108)
 - [InGameManager.cs:124-127](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L124-L127)
 - [ZoneController.cs:13-18](file://Assets/FPS-Game/Scripts/System/ZoneController.cs#L13-L18)
+- [InGameManager.cs:145-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L145-L163)
+- [SpawnInGameManager.cs:20-38](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L20-L38)
 
 ## Conclusion
-The match lifecycle management system centers on InGameManager, which orchestrates initialization, camera management, tactical zone setup, player info collection, and graceful shutdown. SpawnInGameManager ensures early instantiation on the server, while ZoneController prepares tactical areas. Supporting managers coordinate time, win conditions, lobby transitions, and bot spawning. The system uses NetworkBehaviour and RPCs to synchronize state across clients, with UI subscribing to events for live updates. Proper sequencing and cleanup minimize desynchronization and timing conflicts, enabling a robust and scalable lifecycle.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The match lifecycle management system centers on InGameManager, which orchestrates initialization, camera management, tactical zone setup, player info collection, and graceful shutdown. **Updated**: The system now ensures proper initialization sequence where all Awake() methods complete before Start() executes, guaranteeing NetworkManager.Singleton is available for game mode setup. SpawnInGameManager ensures early instantiation on the server, while ZoneController prepares tactical areas. Supporting managers coordinate time, win conditions, and bot spawning. The system uses NetworkBehaviour and RPCs to synchronize state across clients, with UI subscribing to events for live updates. The corrected initialization flow minimizes desynchronization and timing conflicts, enabling a robust and scalable lifecycle.
 
 ## Appendices
 - Example references:
@@ -396,3 +408,4 @@ The match lifecycle management system centers on InGameManager, which orchestrat
   - Zone initialization: [InGameManager.cs:124-127](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L124-L127), [ZoneController.cs:13-18](file://Assets/FPS-Game/Scripts/System/ZoneController.cs#L13-L18)
   - UI subscription pattern: [PlayerUI.cs:66-85](file://Assets/FPS-Game/Scripts/Player/PlayerUI.cs#L66-L85)
   - Early spawn guardrails: [SpawnInGameManager.cs:41-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L41-L69)
+  - **Updated**: Corrected initialization sequence: [InGameManager.cs:145-163](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L145-L163)

@@ -1,7 +1,6 @@
 using AIBot;
 using BehaviorDesigner.Runtime;
 using BehaviorDesigner.Runtime.Tasks;
-using Unity.VisualScripting;
 using UnityEngine;
 using TooltipAttribute = BehaviorDesigner.Runtime.Tasks.TooltipAttribute;
 

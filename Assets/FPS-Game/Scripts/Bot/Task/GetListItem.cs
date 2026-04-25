@@ -6,7 +6,6 @@ using UnityEngine;
 using BehaviorDesigner.Runtime;
 using BehaviorDesigner.Runtime.Tasks;
 using TooltipAttribute = BehaviorDesigner.Runtime.Tasks.TooltipAttribute;
-using Unity.VisualScripting;
 
 /// <summary>
 /// GetListItem: retrieve an element from a SharedTransformList or SharedGameObjectList by index and write it to a SharedTransform (or SharedVector3).
@@ -74,7 +73,7 @@ public class GetListItem : Action
             }
             else
             {
-                result.Value = t.GameObject();                
+                result.Value = t.gameObject;                
             }
 
             return TaskStatus.Success;

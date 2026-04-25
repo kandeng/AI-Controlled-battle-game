@@ -1,15 +1,9 @@
 using Unity.Netcode;
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 namespace PlayerAssets
 {
     [RequireComponent(typeof(CharacterController))]
-#if ENABLE_INPUT_SYSTEM
-    [RequireComponent(typeof(PlayerInput))]
-#endif
     public class PlayerController : PlayerBehaviour
     {
         [Header("Player Movement")]
@@ -64,15 +58,10 @@ namespace PlayerAssets
 
         bool _toggleCameraRotation = true;
 
-#if ENABLE_INPUT_SYSTEM
-        private PlayerInput _playerInput;
-#endif
-        // private CharacterController _controller;
         private PlayerAssetsInputs _input;
         private GameObject _mainCamera;
 
         private const float _threshold = 0.01f;
-        // public bool _hasAnimator;
 
         // Animator parameters
         private int _animIDSpeed;
@@ -85,18 +74,6 @@ namespace PlayerAssets
 
         Vector3 _currentPos;
         Quaternion _currentRot;
-
-        private bool IsCurrentDeviceMouse
-        {
-            get
-            {
-#if ENABLE_INPUT_SYSTEM
-                return _playerInput != null && _playerInput.currentControlScheme == "KeyboardMouse";
-#else
-                return false;
-#endif
-            }
-        }
 
         public override void InitializeAwake()
         {
@@ -125,10 +102,6 @@ namespace PlayerAssets
             // _hasAnimator = TryGetComponent(out _animator);
             // _controller = GetComponent<CharacterController>();
             _input = GetComponent<PlayerAssetsInputs>();
-
-#if ENABLE_INPUT_SYSTEM
-            _playerInput = GetComponent<PlayerInput>();
-#endif
 
             AssignAnimationIDs();
 
@@ -217,15 +190,9 @@ namespace PlayerAssets
                 _targetRotation = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg + _mainCamera.transform.eulerAngles.y;
                 float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, _targetRotation, ref _rotationYVelocity, RotationSmoothTime);
 
-                // Move Foward
-                if (_input.move.y > 0 || Input.GetMouseButtonDown(0))
+                // Move Forward
+                if (_input.move.y > 0)
                 {
-                    // if (_hasAnimator)
-                    // {
-                    //     _animator.SetFloat(_animIDVelocityY, 10);
-                    //     _animator.SetFloat(_animIDVelocityX, 0);
-                    // }
-
                     _animator.SetFloat(_animIDVelocityY, 10);
                     _animator.SetFloat(_animIDVelocityX, 0);
                 }
@@ -233,12 +200,6 @@ namespace PlayerAssets
                 // Move Left
                 if (_input.move.x < 0 && _input.move.y == 0)
                 {
-                    // if (_hasAnimator)
-                    // {
-                    //     _animator.SetFloat(_animIDVelocityY, 0);
-                    //     _animator.SetFloat(_animIDVelocityX, -10);
-                    // }
-
                     _animator.SetFloat(_animIDVelocityY, 0);
                     _animator.SetFloat(_animIDVelocityX, -10);
                 }
@@ -246,49 +207,24 @@ namespace PlayerAssets
                 // Move Right
                 if (_input.move.x > 0 && _input.move.y == 0)
                 {
-                    // if (_hasAnimator)
-                    // {
-                    //     _animator.SetFloat(_animIDVelocityY, 0);
-                    //     _animator.SetFloat(_animIDVelocityX, 10);
-                    // }
-
                     _animator.SetFloat(_animIDVelocityY, 0);
                     _animator.SetFloat(_animIDVelocityX, 10);
                 }
 
-                // Move Foward
+                // Move Backward
                 if (_input.move.y < 0)
                 {
-                    // if (_hasAnimator)
-                    // {
-                    //     _animator.SetFloat(_animIDVelocityY, -10);
-                    //     _animator.SetFloat(_animIDVelocityX, 0);
-                    // }
-
                     _animator.SetFloat(_animIDVelocityY, -10);
                     _animator.SetFloat(_animIDVelocityX, 0);
                 }
-
-                // transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
             }
 
             Vector3 targetDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * Vector3.forward;
 
             _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
 
-            // if (_hasAnimator)
-            // {
-            //     _animator.SetFloat(_animIDSpeed, _animationBlend);
-            //     _animator.SetFloat(_animIDMotionSpeed, inputMagnitude);
-            // }
-
             _animator.SetFloat(_animIDSpeed, _animationBlend);
             _animator.SetFloat(_animIDMotionSpeed, inputMagnitude);
-
-            // transform.SetLocalPositionAndRotation(
-            //     Vector3.Lerp(_currentPos, _currentPos, 0),
-            //     _playerModel.transform.rotation
-            // );
         }
 
         private void BotMove()
@@ -364,12 +300,6 @@ namespace PlayerAssets
             {
                 _fallTimeoutDelta = FallTimeout;
 
-                // if (_hasAnimator)
-                // {
-                //     _animator.SetBool(_animIDJump, false);
-                //     _animator.SetBool(_animIDFreeFall, false);
-                // }
-
                 _animator.SetBool(_animIDJump, false);
                 _animator.SetBool(_animIDFreeFall, false);
 
@@ -381,11 +311,6 @@ namespace PlayerAssets
                 if (_input.jump && _jumpTimeoutDelta <= 0.0f)
                 {
                     _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
-
-                    // if (_hasAnimator)
-                    // {
-                    //     _animator.SetBool(_animIDJump, true);
-                    // }
 
                     _animator.SetBool(_animIDJump, true);
                 }
@@ -428,7 +353,7 @@ namespace PlayerAssets
 
             if (_input.look.sqrMagnitude >= _threshold && !LockCameraPosition)
             {
-                float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
+                float deltaTimeMultiplier = 1.0f;
 
                 _cinemachineTargetYaw += _input.look.x * deltaTimeMultiplier;
                 _cinemachineTargetPitch += _input.look.y * deltaTimeMultiplier;

@@ -2,104 +2,45 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine.SceneManagement;
 
+/// <summary>
+/// Forces Unity to always start Play mode from Play Scene,
+/// regardless of which scene is currently open in the Editor.
+/// Uses EditorSceneManager.playModeStartScene — the correct Unity API for this purpose.
+/// </summary>
 [InitializeOnLoad]
 public static class EditorOnlyPreview
 {
-    private const string prefabPath = "Assets/FPS-Game/Prefabs/Player.prefab";
-    private const string childNameToToggle = "PlayerUI";
-
-    private static string _previousScenePath;
+    private const string PLAY_SCENE_PATH = "Assets/FPS-Game/Scenes/MainScenes/Play Scene.unity";
 
     static EditorOnlyPreview()
     {
+        // Set the play-mode start scene immediately on Editor load/recompile
+        SetPlayModeStartScene();
+
+        // Re-apply whenever the Editor recompiles or domain reloads
         EditorApplication.playModeStateChanged += OnPlayModeChanged;
     }
 
     static void OnPlayModeChanged(PlayModeStateChange state)
     {
-        switch (state)
-        {
-            case PlayModeStateChange.ExitingEditMode:
-                // Trước khi chạy:
-                SaveCurrentScenePath();
-                // ToggleChildInPrefab(prefabPath, childNameToToggle, false); // TẮT
-                AutoLoadScene0();
-                break;
-
-            case PlayModeStateChange.EnteredEditMode:
-                // Sau khi STOP chạy:
-                // ToggleChildInPrefab(prefabPath, childNameToToggle, true); // BẬT lại
-                RestorePreviousScene();
-                break;
-        }
+        if (state == PlayModeStateChange.ExitingEditMode)
+            SetPlayModeStartScene();
     }
 
-    static void ToggleChildInPrefab(string path, string childName, bool enable)
+    static void SetPlayModeStartScene()
     {
-        GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-        if (prefabAsset == null)
+        SceneAsset playScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(PLAY_SCENE_PATH);
+        if (playScene == null)
         {
-            Debug.LogWarning($"Không tìm thấy prefab tại đường dẫn: {path}");
+            Debug.LogWarning($"[EditorOnlyPreview] Play Scene not found: {PLAY_SCENE_PATH}");
             return;
         }
 
-        GameObject prefabRoot = PrefabUtility.LoadPrefabContents(path);
-        Transform targetChild = prefabRoot.transform.Find(childName);
-
-        if (targetChild != null)
+        if (EditorSceneManager.playModeStartScene != playScene)
         {
-            targetChild.gameObject.SetActive(enable);
-            string state = enable ? "bật" : "tắt";
-            Debug.Log($"[EditorOnlyPreview] Đã {state} '{childName}' trong prefab '{path}'");
-
-            PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
-        }
-        else
-        {
-            Debug.LogWarning($"Không tìm thấy đối tượng con '{childName}' trong prefab '{path}'");
-        }
-
-        PrefabUtility.UnloadPrefabContents(prefabRoot);
-    }
-
-    static void AutoLoadScene0()
-    {
-        if (EditorBuildSettings.scenes.Length == 0)
-        {
-            Debug.LogWarning("[EditorOnlyPreview] Không có scene nào trong Build Settings.");
-            return;
-        }
-
-        string scenePath = EditorBuildSettings.scenes[0].path;
-
-        if (SceneManager.GetActiveScene().path != scenePath)
-        {
-            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-            {
-                EditorSceneManager.OpenScene(scenePath);
-                Debug.Log($"[EditorOnlyPreview] Đã chuyển sang Scene 0: {scenePath}");
-            }
-            else
-            {
-                Debug.LogWarning("[EditorOnlyPreview] Người dùng hủy lưu scene hiện tại.");
-                EditorApplication.isPlaying = false;
-            }
-        }
-    }
-
-    static void SaveCurrentScenePath()
-    {
-        _previousScenePath = SceneManager.GetActiveScene().path;
-    }
-
-    static void RestorePreviousScene()
-    {
-        if (!string.IsNullOrEmpty(_previousScenePath) && SceneManager.GetActiveScene().path != _previousScenePath)
-        {
-            EditorSceneManager.OpenScene(_previousScenePath);
-            Debug.Log($"[EditorOnlyPreview] Quay về scene trước: {_previousScenePath}");
+            EditorSceneManager.playModeStartScene = playScene;
+            Debug.Log($"[EditorOnlyPreview] Play mode start scene set to: {PLAY_SCENE_PATH}");
         }
     }
 }

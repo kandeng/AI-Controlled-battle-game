@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+#pragma warning disable CS0618 // GetInstanceID is obsolete in Unity 6
 
 // Cartoon FX  - (c) 2012-2016 Jean Moreno
 

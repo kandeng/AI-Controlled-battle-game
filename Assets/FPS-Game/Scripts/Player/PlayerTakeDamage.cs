@@ -55,7 +55,7 @@ public class PlayerTakeDamage : PlayerBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void ChangeHPServerRpc(float damage, ulong targetClientId, ulong ownerClientId)
     {
         var targetPlayer = NetworkManager.Singleton.ConnectedClients[targetClientId].PlayerObject;
@@ -75,20 +75,17 @@ public class PlayerTakeDamage : PlayerBehaviour
                 targetPlayerRoot.PlayerTakeDamage.HP.Value = 0;
                 InGameManager.Instance.KillCountChecker.CheckPlayerKillCount(ownerPlayerNetwork.KillCount.Value);
             }
-
-            Debug.Log($"{targetClientId} current HP: {targetPlayerRoot.PlayerTakeDamage.HP.Value}");
         }
 
         PlayerRoot.PlayerUI.AddTakeDamageEffect(damage, targetClientId);
     }
 
     // Cập nhật HP của bot (bot ở đây được xem như một networkObj thay vì playerObj)
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void ChangeHPForBot_ServerRpc(float damage, ulong targetID, ulong ownerId)
     {
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(targetID, out var botObj))
         {
-            Debug.Log($"Tìm thấy object: {botObj.name}");
             if (botObj.TryGetComponent<PlayerRoot>(out var botRoot))
             {
                 if (botRoot.PlayerTakeDamage.HP.Value == 0) return;
@@ -103,7 +100,7 @@ public class PlayerTakeDamage : PlayerBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void ResetPlayerHP_ServerRpc(ulong id, bool isBot = false)
     {
         if (isBot)

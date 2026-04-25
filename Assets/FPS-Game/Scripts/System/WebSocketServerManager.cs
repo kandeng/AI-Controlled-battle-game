@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using UnityEngine;
 
 // Note: These namespaces require websocket-sharp library
@@ -13,6 +14,9 @@ using WebSocketSharp.Server;
 /// 
 /// REQUIRES: websocket-sharp library
 /// Installation: See WebSocket/README_WEBSOCKET_INSTALLATION.md
+///
+/// THREADING: websocket-sharp callbacks run on background threads.
+/// All Unity API calls must be marshalled to the main thread via _mainThreadQueue.
 /// </summary>
 public class WebSocketServerManager : MonoBehaviour
 {
@@ -29,6 +33,9 @@ public class WebSocketServerManager : MonoBehaviour
     private WebSocketServer server;
     private float broadcastTimer;
     private List<AgentSession> activeSessions = new();
+
+    // Thread-safe queue: background WS threads enqueue work; Update() drains it on the main thread.
+    private readonly ConcurrentQueue<Action> _mainThreadQueue = new();
     
     void Awake()
     {
@@ -51,6 +58,13 @@ public class WebSocketServerManager : MonoBehaviour
     
     void Update()
     {
+        // --- Drain main-thread work queued by background WebSocket threads ---
+        while (_mainThreadQueue.TryDequeue(out var action))
+        {
+            try { action(); }
+            catch (Exception ex) { Debug.LogError($"[WebSocketServer] Main-thread action error: {ex.Message}"); }
+        }
+
         // Broadcast game state at fixed interval
         broadcastTimer += Time.deltaTime;
         if (broadcastTimer >= broadcastInterval)
@@ -70,6 +84,8 @@ public class WebSocketServerManager : MonoBehaviour
     /// </summary>
     public void Initialize()
     {
+        if (server != null && server.IsListening)
+            return;
         try
         {
             string url = $"ws://0.0.0.0:{port}";
@@ -108,40 +124,53 @@ public class WebSocketServerManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Handle new agent connection
+    /// Handle new agent connection — called on a background thread.
     /// </summary>
     void HandleAgentConnected(string sessionId)
     {
-        var session = new AgentSession
+        _mainThreadQueue.Enqueue(() =>
         {
-            Id = sessionId,
-            ConnectedAt = Time.time,
-            LastCommandTime = Time.time
-        };
-        
-        activeSessions.Add(session);
-        Debug.Log($"[WebSocketServer] Agent connected: {sessionId} (Total: {activeSessions.Count})");
+            var session = new AgentSession
+            {
+                Id = sessionId,
+                ConnectedAt = Time.time,
+                LastCommandTime = Time.time
+            };
+            activeSessions.Add(session);
+        });
     }
     
     /// <summary>
-    /// Handle agent disconnection
+    /// Handle agent disconnection — called on a background thread.
     /// </summary>
     void HandleAgentDisconnected(string sessionId)
     {
-        activeSessions.RemoveAll(s => s.Id == sessionId);
-        Debug.Log($"[WebSocketServer] Agent disconnected: {sessionId} (Total: {activeSessions.Count})");
+        _mainThreadQueue.Enqueue(() =>
+        {
+            activeSessions.RemoveAll(s => s.Id == sessionId);
+        });
     }
     
     /// <summary>
-    /// Handle incoming command from agent
+    /// Handle incoming command from agent — called on a background thread.
+    /// Enqueues the parsed command for dispatch on the main thread.
     /// </summary>
     void HandleCommandReceived(string sessionId, string commandJson)
     {
+        // Parse JSON here (thread-safe — no Unity API used)
+        AgentCommand command;
         try
         {
-            // Parse command
-            AgentCommand command = JsonUtility.FromJson<AgentCommand>(commandJson);
-            
+            command = JsonUtility.FromJson<AgentCommand>(commandJson);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[WebSocketServer] Failed to parse command JSON: {ex.Message}");
+            return;
+        }
+
+        _mainThreadQueue.Enqueue(() =>
+        {
             // Update session tracking
             var session = activeSessions.Find(s => s.Id == sessionId);
             if (session != null)
@@ -149,14 +178,13 @@ public class WebSocketServerManager : MonoBehaviour
                 session.LastCommandTime = Time.time;
                 session.CommandsReceived++;
             }
-            
-            // Route command to appropriate controller
-            CommandRouter.Execute(command, sessionId);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[WebSocketServer] Error processing command: {ex.Message}");
-        }
+
+            // Route command through CommandDispatcher (main thread — safe)
+            if (CommandDispatcher.Instance != null)
+                CommandDispatcher.Instance.Dispatch(command);
+            else
+                Debug.LogWarning("[WebSocketServer] CommandDispatcher not found — command dropped.");
+        });
     }
     
     /// <summary>
@@ -174,9 +202,8 @@ public class WebSocketServerManager : MonoBehaviour
             // Serialize to JSON
             string json = JsonUtility.ToJson(snapshot);
             
-            // TODO: Broadcast to all connected agents - websocket-sharp API needs adjustment
-            // server.WebServices[endpoint].Sessions.Broadcast(json);
-            Debug.Log($"[WebSocketServer] Would broadcast state: {json.Substring(0, Mathf.Min(100, json.Length))}...");
+            // TODO: Broadcast to all connected agents via websocket-sharp
+            // server.WebSocketServices[endpoint].Sessions.Broadcast(json);
         }
         catch (Exception ex)
         {
@@ -206,7 +233,7 @@ public class WebSocketServerManager : MonoBehaviour
     /// </summary>
     PlayerState CapturePlayerState()
     {
-        PlayerRoot player = FindObjectOfType<PlayerRoot>();
+        PlayerRoot player = UnityEngine.Object.FindAnyObjectByType<PlayerRoot>();
         if (player == null) return null;
         
         return new PlayerState
@@ -232,8 +259,8 @@ public class WebSocketServerManager : MonoBehaviour
     /// </summary>
     EnemyState[] CaptureEnemyStates()
     {
-        PlayerRoot[] allPlayers = FindObjectsByType<PlayerRoot>(FindObjectsSortMode.None);
-        PlayerRoot localPlayer = FindObjectOfType<PlayerRoot>();
+        PlayerRoot[] allPlayers = FindObjectsByType<PlayerRoot>(FindObjectsInactive.Exclude);
+        PlayerRoot localPlayer = UnityEngine.Object.FindAnyObjectByType<PlayerRoot>();
         
         List<EnemyState> enemies = new();
         
@@ -270,8 +297,8 @@ public class WebSocketServerManager : MonoBehaviour
     /// </summary>
     GameInfo CaptureGameInfo()
     {
-        TimePhaseCounter timeCounter = FindObjectOfType<TimePhaseCounter>();
-        KillCountChecker killChecker = FindObjectOfType<KillCountChecker>();
+        TimePhaseCounter timeCounter = UnityEngine.Object.FindAnyObjectByType<TimePhaseCounter>();
+        KillCountChecker killChecker = UnityEngine.Object.FindAnyObjectByType<KillCountChecker>();
         
         return new GameInfo
         {
@@ -290,7 +317,7 @@ public class WebSocketServerManager : MonoBehaviour
     /// </summary>
     ZoneInfo CaptureZoneInfo()
     {
-        PlayerRoot player = FindObjectOfType<PlayerRoot>();
+        PlayerRoot player = UnityEngine.Object.FindAnyObjectByType<PlayerRoot>();
         if (player == null || player.CurrentZoneData == null) return null;
         
         return new ZoneInfo

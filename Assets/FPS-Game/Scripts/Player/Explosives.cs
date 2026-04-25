@@ -77,7 +77,7 @@ public class Explosives : PlayerBehaviour
         _throwForce = 20f;
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     private void ThrowGrenade_ServerRPC(ulong throwerClientId)
     {
         // ThrowGrenade();
@@ -118,7 +118,7 @@ public class Explosives : PlayerBehaviour
         Invoke(nameof(GrenadeReturn), 0.5f);
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     void ScanForTargets_ServerRPC(ulong throwerClientId)
     {
         Collider[] hitColliders = Physics.OverlapSphere(_currentGrenade.transform.position, _explosionRadius);
@@ -208,7 +208,7 @@ public class Explosives : PlayerBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     void EnableCurrentGrenade_ServerRPC()
     {
         EnableCurrentGrenade_ClientRPC();

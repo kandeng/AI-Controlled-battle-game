@@ -92,7 +92,7 @@ public class Melees : PlayerBehaviour
         _isAttacking = false;
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void CheckSlashHit_ServerRPC(string currentSlashType, ulong clientId)
     {
         Vector3 slashBoundsSize, slashOffset;

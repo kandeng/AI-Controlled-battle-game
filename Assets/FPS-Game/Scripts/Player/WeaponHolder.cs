@@ -160,7 +160,7 @@ public class WeaponHolder : PlayerBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     void RequestEquipWeapon_ServerRpc(int weaponIndex)
     {
         UpdateWeapon_ClientRpc(weaponIndex);

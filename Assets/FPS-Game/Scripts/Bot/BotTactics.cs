@@ -228,11 +228,11 @@ public class BotTactics : MonoBehaviour
         // Nếu sau vòng lặp mà bestMatch vẫn quá thấp, có thể người chơi chỉ đang đứng yên hoặc xoay vòng
         if (bestMatch < 0.2f) // Ví dụ: góc lệch quá 78 độ
         {
-            Debug.Log($"Confidence low (Best Dot: {bestMatch}). Staying in current zone: {currentZoneData.name}");
+            // Confidence too low — staying in current zone
             return currentZoneData; // Ở lại zone cũ để tìm kỹ hơn thay vì đoán bừa sang zone khác
         }
 
-        Debug.Log($"Target identified: {targetZoneData.zoneID} with Match Score: {bestMatch}");
+        // Target zone identified
         return targetZoneData;
     }
 
@@ -256,7 +256,7 @@ public class BotTactics : MonoBehaviour
                 isZoneFullyScanned = true;
                 canScan = false;
 
-                Debug.Log("[BotTactics] Firing OnZoneFullyScanned");
+                // Zone fully scanned event
                 OnZoneFullyScanned?.Invoke();
             }
             return;
@@ -275,7 +275,7 @@ public class BotTactics : MonoBehaviour
                 isCurrentVisiblePointsCompleted = true;
                 canScan = false;
 
-                Debug.Log("[BotTactics] Firing OnCurrentVisiblePointsCompleted");
+                // Visible points completed event
                 OnCurrentVisiblePointsCompleted?.Invoke();
             }
             return;

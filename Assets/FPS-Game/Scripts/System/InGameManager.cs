@@ -167,12 +167,7 @@ public class InGameManager : NetworkBehaviour
     /// </summary>
     void InitializeWebSocketMode()
     {
-        Debug.Log("[InGameManager] Initializing WebSocket Agent Mode");
-        
-        // Start WebSocket server
         WebSocketServerManager.Instance?.Initialize();
-        
-        Debug.Log("[InGameManager] WebSocket mode initialized - no network services required");
     }
     
     /// <summary>
@@ -180,14 +175,10 @@ public class InGameManager : NetworkBehaviour
     /// </summary>
     void InitializeSinglePlayerMode()
     {
-        Debug.Log("[InGameManager] Initializing Single Player Mode");
-        
-        // Start NetworkManager as host (server + client)
         if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
-        {
             NetworkManager.Singleton.StartHost();
-            Debug.Log("[InGameManager] Single Player: NetworkManager started as host");
-        }
+
+        WebSocketServerManager.Instance?.Initialize();
     }
     
     /// <summary>
@@ -195,17 +186,8 @@ public class InGameManager : NetworkBehaviour
     /// </summary>
     void InitializeMultiplayerMode()
     {
-        Debug.Log("[InGameManager] Initializing Multiplayer Mode");
-        
-        // Start NetworkManager as host (server + client for single-player testing)
         if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
-        {
             NetworkManager.Singleton.StartHost();
-            Debug.Log("[InGameManager] Multiplayer: NetworkManager started as host");
-        }
-        
-        // Existing multiplayer initialization logic
-        // LobbyRelayChecker will be initialized in common section
     }
     public override void OnNetworkSpawn()
     {
@@ -224,8 +206,8 @@ public class InGameManager : NetworkBehaviour
         GetAllPlayerInfos_ServerRPC();
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    void GetAllPlayerInfos_ServerRPC(ServerRpcParams rpcParams = default)
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    void GetAllPlayerInfos_ServerRPC(RpcParams rpcParams = default)
     {
         // Chỉ chạy đoạn này nếu là server
         if (!NetworkManager.Singleton.IsServer) return;

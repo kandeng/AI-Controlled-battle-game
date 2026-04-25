@@ -12,14 +12,16 @@
 - [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
 - [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
 - [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
+- [UnityTransport.cs](file://Library/PackageCache/com.unity.netcode.gameobjects@60c1d83693e8/Runtime/Transports/UTP/UnityTransport.cs)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Updated documentation to reflect the critical multiplayer initialization fix with NetworkManager.StartHost() calls
-- Enhanced InGameManager documentation with proper NetworkManager startup logic for both multiplayer and single-player modes
-- Updated troubleshooting section with specific guidance for initialization sequence issues
-- Added new section on NetworkManager initialization best practices
+- Updated documentation to reflect critical networking configuration fix where m_ProtocolType was changed from 1 (Relay) to 0 (Direct Connection) in NetworkManager prefab
+- Enhanced NetworkManager transport configuration documentation with direct IP connection mode details
+- Updated troubleshooting section with specific guidance for protocol type configuration issues
+- Added new section on NetworkTransport protocol types and their implications for connectivity
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -27,14 +29,17 @@
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Game Modes and Initialization](#game-modes-and-initialization)
-6. [Detailed Component Analysis](#detailed-component-analysis)
-7. [Dependency Analysis](#dependency-analysis)
-8. [Performance Considerations](#performance-considerations)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Conclusion](#conclusion)
+6. [Network Transport Configuration](#network-transport-configuration)
+7. [Detailed Component Analysis](#detailed-component-analysis)
+8. [Dependency Analysis](#dependency-analysis)
+9. [Performance Considerations](#performance-considerations)
+10. [Troubleshooting Guide](#troubleshooting-guide)
+11. [Conclusion](#conclusion)
 
 ## Introduction
 This document explains the networking architecture of the project with a focus on server-authoritative gameplay using Unity Netcode for GameObjects. It covers the client-host topology, NetworkObject synchronization patterns, and NetworkVariable usage for state management. It also documents server-authoritative mechanics for player movement, weapon state, and health/damage processing, along with client-side interpolation, prediction, and rollback considerations. The architecture now supports multiple game modes including single-player testing, traditional multiplayer, and WebSocket agent modes. Practical examples illustrate networked object spawning, cross-client player synchronization, and event broadcasting with improved initialization timing. Finally, it provides guidance on optimization, bandwidth management, latency compensation, debugging, disconnection handling, and reliable messaging.
+
+**Updated** The networking system now utilizes direct IP connection mode (ProtocolType.Direct) instead of Unity Relay, providing improved reliability for LAN and single-player scenarios while maintaining full multiplayer functionality.
 
 ## Project Structure
 The networking layer centers around a player-rooted hierarchy with a dedicated PlayerRoot component that aggregates subsystems (movement, camera, input, UI, weapon, etc.). PlayerBehaviour is the base NetworkBehaviour for player-related scripts. PlayerNetwork orchestrates spawn, respawn, and cross-client state mapping. PlayerMovement handles authoritative movement logic. PlayerWeapon encapsulates weapon collections. Entity and Bullet manage hit detection and projectile lifecycle. The system now supports multiple initialization modes through the GameMode enum.
@@ -55,6 +60,7 @@ LM["LobbyManager"]
 EN["Entity"]
 BL["Bullet"]
 GM["GameMode"]
+NT["NetworkTransport"]
 end
 PR --> PM
 PR --> PW
@@ -68,6 +74,7 @@ EN --> BL
 IG --> SIM
 IG --> GM
 SIM --> IG
+NT --> IG
 ```
 
 **Diagram sources**
@@ -81,6 +88,7 @@ SIM --> IG
 - [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
 - [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
 - [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
 
 **Section sources**
 - [PlayerNetwork.cs:12-220](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L220)
@@ -104,6 +112,7 @@ SIM --> IG
 - **Updated** InGameManager: Central game manager with mode-specific initialization support including single-player mode with NetworkManager host startup and improved spawn timing coordination.
 - **Updated** SpawnInGameManager: Enhanced spawn timing system with event-driven initialization that subscribes to NetworkManager.OnServerStarted for proper spawn sequencing.
 - **New** GameMode: Enum defining operational modes (Multiplayer, WebSocketAgent, SinglePlayer) for flexible game configuration.
+- **Updated** NetworkTransport: Configured with ProtocolType.Direct (0) for direct IP connections, eliminating relay overhead and improving LAN/single-player reliability.
 
 **Section sources**
 - [PlayerBehaviour.cs:4-31](file://Assets/FPS-Game/Scripts/Player/PlayerBehaviour.cs#L4-L31)
@@ -115,6 +124,7 @@ SIM --> IG
 - [InGameManager.cs](file://Assets/FPS-Game/Scripts/System/InGameManager.cs)
 - [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
 - [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
 
 ## Architecture Overview
 The architecture follows a client-host model with server authority and supports multiple operational modes:
@@ -123,6 +133,7 @@ The architecture follows a client-host model with server authority and supports 
 - Client interpolation: Non-owners interpolate positions/rotations received from the server.
 - RPCs: ServerRpc/ClientRpc coordinate cross-client deterministic events (mapping identities, respawns).
 - **Updated** Game modes: Multiplayer (traditional), WebSocketAgent (direct AI control), and SinglePlayer (local testing with host mode).
+- **Updated** Transport protocol: Direct IP connections (ProtocolType.Direct) for improved reliability and reduced latency.
 
 ```mermaid
 sequenceDiagram
@@ -211,6 +222,46 @@ The SpawnInGameManager now implements event-driven initialization for better spa
 - [InGameManager.cs:110-205](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L110-L205)
 - [SpawnInGameManager.cs:20-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L20-L69)
 - [GameMode.cs:4-21](file://Assets/FPS-Game/Scripts/System/GameMode.cs#L4-L21)
+
+## Network Transport Configuration
+
+### Protocol Type Configuration
+The NetworkManager prefab has been updated to use ProtocolType.Direct (0) instead of ProtocolType.Relay (1), providing several key benefits:
+
+**Direct Connection Benefits:**
+- **Reduced Latency**: Eliminates relay hop overhead for LAN and single-player scenarios
+- **Improved Reliability**: Direct IP connections reduce packet loss and connection instability
+- **Lower Bandwidth**: Removes relay server costs and reduces overall bandwidth usage
+- **Simplified Setup**: No relay server configuration required for basic networking
+
+**Configuration Details:**
+- ProtocolType: 0 (Direct Connection)
+- ConnectionData: Address: 127.0.0.1, Port: 7777
+- ServerListenAddress: 0.0.0.0 (binds to all interfaces)
+- Transport settings optimized for direct connections
+
+**Transport Implementation:**
+The UnityTransport component automatically adjusts reliability settings based on protocol type:
+- Direct connections use 500ms maximum resend timeout
+- Relay connections use 750ms maximum resend timeout for better reliability
+- Direct connections benefit from lower latency with appropriate reliability
+
+```mermaid
+flowchart TD
+Protocol["NetworkTransport.m_ProtocolType"] --> Check{"ProtocolType == Direct?"}
+Check --> |Yes| Direct["Direct IP Connection<br/>Address: 127.0.0.1<br/>Port: 7777<br/>MaxResendTime: 500ms"]
+Check --> |No| Relay["Relay Connection<br/>MaxResendTime: 750ms"]
+Direct --> Benefits["Benefits:<br/>• Lower latency<br/>• Reduced bandwidth<br/>• Improved reliability<br/>• Simplified setup"]
+Relay --> Tradeoffs["Tradeoffs:<br/>• Higher latency<br/>• Relay costs<br/>• Additional complexity"]
+```
+
+**Diagram sources**
+- [NetworkManager.prefab:85](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L85)
+- [UnityTransport.cs:553](file://Library/PackageCache/com.unity.netcode.gameobjects@60c1d83693e8/Runtime/Transports/UTP/UnityTransport.cs#L553)
+
+**Section sources**
+- [NetworkManager.prefab:85](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L85)
+- [UnityTransport.cs:553](file://Library/PackageCache/com.unity.netcode.gameobjects@60c1d83693e8/Runtime/Transports/UTP/UnityTransport.cs#L553)
 
 ## Detailed Component Analysis
 
@@ -345,6 +396,7 @@ BulletObj-->>Shooter : "Return to pool"
 - Entity and Bullet form a reusable projectile-target interaction pattern.
 - **Updated** InGameManager coordinates with SpawnInGameManager for proper initialization timing and supports multiple game modes with proper NetworkManager startup logic.
 - **Updated** SpawnInGameManager handles event-driven spawn timing and coordinates with NetworkManager initialization.
+- **Updated** NetworkTransport configuration affects all networking components through ProtocolType.Direct settings.
 
 ```mermaid
 graph LR
@@ -356,6 +408,7 @@ EN["Entity"] --> BL["Bullet"]
 IG --> SIM["SpawnInGameManager"]
 IG --> GM["GameMode"]
 SIM --> IG
+NT["NetworkTransport"] --> IG
 ```
 
 **Diagram sources**
@@ -368,6 +421,7 @@ SIM --> IG
 - [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
 - [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
 - [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
 
 **Section sources**
 - [PlayerNetwork.cs:12-220](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L12-L220)
@@ -379,6 +433,7 @@ SIM --> IG
 - [LobbyManager.cs](file://Assets/FPS-Game/Scripts/Lobby Script/Lobby/Scripts/LobbyManager.cs)
 - [SpawnInGameManager.cs](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs)
 - [GameMode.cs](file://Assets/FPS-Game/Scripts/System/GameMode.cs)
+- [NetworkManager.prefab](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab)
 
 ## Performance Considerations
 - Minimize RPC frequency: Batch state updates and use NetworkVariables for frequent counters (kill/death).
@@ -390,6 +445,7 @@ SIM --> IG
 - **Updated** Single-player mode optimization: NetworkManager host mode eliminates lobby overhead for testing scenarios.
 - **Updated** Event-driven initialization: SpawnInGameManager reduces initialization race conditions through proper event sequencing.
 - **Updated** NetworkManager startup optimization: Proper initialization prevents redundant startup attempts and improves reliability.
+- **Updated** Direct connection performance: ProtocolType.Direct reduces latency by eliminating relay overhead while maintaining reliable delivery.
 
 ## Troubleshooting Guide
 Common issues and remedies:
@@ -403,6 +459,8 @@ Common issues and remedies:
 - **Updated** Spawn timing problems: Check that SpawnInGameManager subscribes to NetworkManager.OnServerStarted event and TrySpawn() executes correctly.
 - **Updated** Initialization sequence errors: Ensure InGameManager.Awake() runs before SpawnInGameManager.Awake() in the proper initialization order.
 - **Updated** NetworkManager startup issues: Verify that NetworkManager.Singleton.StartHost() is only called when NetworkManager.Singleton != null and !NetworkManager.Singleton.IsListening.
+- **Updated** Protocol type conflicts: Ensure m_ProtocolType is set to 0 (Direct Connection) in NetworkManager prefab for optimal performance.
+- **Updated** Connectivity issues: Verify NetworkTransport settings match expected direct connection configuration (Address: 127.0.0.1, Port: 7777).
 
 **Section sources**
 - [PlayerNetwork.cs:183-199](file://Assets/FPS-Game/Scripts/Player/PlayerNetwork.cs#L183-L199)
@@ -411,10 +469,13 @@ Common issues and remedies:
 - [Bullet.cs:7-23](file://Assets/FPS-Game/Scripts/Bullet.cs#L7-L23)
 - [InGameManager.cs:177-205](file://Assets/FPS-Game/Scripts/System/InGameManager.cs#L177-L205)
 - [SpawnInGameManager.cs:20-69](file://Assets/FPS-Game/Scripts/System/SpawnInGameManager.cs#L20-L69)
+- [NetworkManager.prefab:85](file://Assets/FPS-Game/Prefabs/System/NetworkManager.prefab#L85)
 
 ## Conclusion
-The project implements a robust server-authoritative networking model using Unity Netcode with enhanced flexibility through multiple game modes. PlayerNetwork centralizes deterministic spawn/respawn and cross-client identity mapping, while PlayerMovement ensures authoritative movement logic. NetworkVariables track essential state, and RPCs coordinate cross-client updates. Client interpolation smooths rendering, and predictable spawn/teleport sequences minimize jitter. The enhanced single-player mode provides seamless development and testing capabilities through proper NetworkManager host initialization. Improved spawn timing through event-driven coordination ensures reliable initialization sequences. 
+The project implements a robust server-authoritative networking model using Unity Netcode with enhanced flexibility through multiple game modes. PlayerNetwork centralizes deterministic spawn/respawn and cross-client identity mapping, while PlayerMovement ensures authoritative movement logic. NetworkVariables track essential state, and RPCs coordinate cross-client updates. Client interpolation smooths rendering, and predictable spawn/teleport sequences minimize jitter. The enhanced single-player mode provides seamless development and testing capabilities through proper NetworkManager host initialization. Improved spawn timing through event-driven coordination ensures reliable initialization sequences.
 
 **Critical Fix**: The addition of NetworkManager.Singleton.StartHost() calls in both InitializeSinglePlayerMode() and InitializeMultiplayerMode() methods resolves critical multiplayer initialization issues when running in Unity Editor with multiplayer mode enabled. This ensures proper networking initialization regardless of the selected game mode, preventing common initialization failures and improving the overall reliability of the networking system.
 
-Extending weapon state and health systems follows similar patterns for scalability and maintainability across all operational modes.
+**Updated Critical Fix**: The change from ProtocolType.Relay (1) to ProtocolType.Direct (0) in the NetworkManager prefab resolves multiplayer functionality failures and enables direct IP connection mode for improved reliability in LAN and single-player scenarios. This configuration change eliminates relay overhead, reduces latency, and simplifies networking setup while maintaining full multiplayer functionality.
+
+Extending weapon state and health systems follows similar patterns for scalability and maintainability across all operational modes. The direct connection configuration provides optimal performance for the project's networking requirements while supporting all supported game modes.

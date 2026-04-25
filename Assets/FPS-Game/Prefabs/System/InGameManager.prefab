@@ -52,8 +52,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 1900463573
+  GlobalObjectIdHash: 2642733906
   InScenePlacedSourceGlobalObjectIdHash: 2642733906
+  DeferredDespawnTick: 0
+  Ownership: 1
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -61,6 +63,8 @@ MonoBehaviour:
   SpawnWithObservers: 1
   DontDestroyWithOwner: 1
   AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &4450866534557819797
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -73,10 +77,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd9e89b6314f8d748b21b365ce866c10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
+  gameMode: 2
   _playerFollowCamera: {fileID: 3876705488695511720, guid: 5ff7e4d18d4b0094abb9de1accc09511, type: 3}
   _playerCamera: {fileID: 8729013873948765236, guid: e97b0184ae278874db686b0ea9b0fb84, type: 3}
   IsGameEnd: 0
   IsTimeOut:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
     m_InternalValue: 0
   AllCharacters: []
 --- !u!114 &2782243707476674553
@@ -91,6 +100,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b95ff5b453d7f64e992e8761df24edd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   waitingPhaseDuration: 26
   preparationPhaseDuration: 0
   combatPhaseDuration: 9999
@@ -107,6 +117,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed0fbf9a0c81aba4493285f9522d6f83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   MaxKillCount: 99
   EndGameSlowFactor: 0.1
 --- !u!114 &7704118952696633411
@@ -134,6 +145,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c1b60ca92fac244a91317af755cc740, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   botPrefab: {fileID: 2453111897199623720, guid: ebed6eff438c14944bf2178fe506028d, type: 3}
   botController: {fileID: 6247042719265355539, guid: 5013765001091774b9d0301d2fd65c09, type: 3}
 --- !u!114 &7419375008985376956
@@ -148,6 +160,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d74a574cc74b3c6418d60c9ca52c7e7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &3278319922578863799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -160,6 +173,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e444ad7a13a9394f99a09d86192d5d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &6516851295146062378
 MonoBehaviour:
   m_ObjectHideFlags: 0

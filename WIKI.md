@@ -31,12 +31,12 @@ A **server-authoritative 3D multiplayer FPS game** built with Unity 6000.4 LTS f
 | Technology | Purpose | Version |
 |------------|---------|---------|
 | Unity Engine | Game development platform | 6000.4 LTS |
-| Netcode for GameObjects | Network synchronization | 1.12.0 |
-| Unity Relay | Serverless P2P connectivity | Latest |
-| Unity Lobby | Matchmaking service | 1.3.0 |
+| Netcode for GameObjects | Network synchronization | 2.11.0 |
+| Unity Relay | Serverless P2P connectivity | Removed |
+| Unity Lobby | Matchmaking service | Removed |
 | Behavior Designer | AI behavior trees | Latest |
 | Universal Render Pipeline | Graphics rendering | 17.0.0 |
-| Unity AI Assistant | AI-powered development | 2.6.0+ |
+| websocket-sharp | Embedded WebSocket server | 1.0.3-rc11 |
 
 ### 1.3 System Goals
 
@@ -108,23 +108,27 @@ Game Session Manager
 ### 3.1 Player System
 
 **Components**:
-- `PlayerController`: Movement, jumping, camera control
+- `PlayerController`: Movement, jumping, camera control (programmatic only, no keyboard/mouse)
 - `PlayerShoot`: Weapon firing, raycasting, hit detection
 - `PlayerReload`: Reload mechanics, ammo management
 - `PlayerInventory`: Weapon switching, item management
 - `PlayerHealth`: Health, damage, death/respawn
+- `PlayerAssetsInputs`: State container for all input flags (programmatic setters only)
+- `AIInputFeeder`: Bridge between command layer and `PlayerAssetsInputs`; subscribes Action delegates in `InitializeStart()` (not `Start()`) to respect the `PlayerRoot` priority-based initialization order
 
 **Data Flow**:
 ```
-Input (Keyboard/Mouse)
+CommandDispatcher
     ↓
-PlayerController.ProcessInput()
+IPlayerCommandAPI (PlayerCommandAPI)
     ↓
-CharacterController.Move()
+AIInputFeeder (Action delegates)
     ↓
-Network Transform Sync
+PlayerAssetsInputs (state fields)
     ↓
-Other Clients Update Position
+PlayerController / PlayerShoot / PlayerReload
+    ↓
+CharacterController.Move() / Network Transform Sync
 ```
 
 ### 3.2 Weapon System
@@ -172,16 +176,18 @@ Lobby     3-2-1       Active   Victory/Defeat
 ```
 Start Game
     ↓
-Load Play Scene
+Load Play Scene.unity
     ↓
-InGameManager.Initialize()
+InGameManager.InitializeSinglePlayerMode()
+    ├── NetworkManager.StartHost()
+    └── WebSocketServerManager.Initialize()
     ↓
 Spawn Local Player
     ↓
 Spawn AI Bots
     ↓
 Game Loop:
-    ├── Player Input
+    ├── WebSocket / DebugConsole → CommandDispatcher
     ├── Bot AI Update
     ├── Physics Update
     ├── Collision Detection
@@ -196,20 +202,18 @@ Return to Menu
 
 ### 4.2 Multiplayer Flow
 
+> **Note**: Unity Services (Lobby, Relay, Authentication) have been removed. Multiplayer uses direct host/client connections via Unity Netcode for GameObjects.
+
 ```
-Player 1:                            Player 2:
+Player 1 (Host):                     Player 2 (Client):
     ↓                                    ↓
-Sign In Scene                      Sign In Scene
+Open Play Scene.unity              Open Play Scene.unity
     ↓                                    ↓
-Authenticate (Unity Auth)          Authenticate
+Set GameMode = Multiplayer         Set GameMode = Multiplayer
     ↓                                    ↓
-Create Lobby                       Browse Lobbies
+Click Play                         Click Play
     ↓                                    ↓
-Configure Game                     Join Lobby
-    ↓                                    ↓
-Start Game                         Ready Up
-    ↓                                    ↓
-Load Play Scene (Host)             Load Play Scene (Client)
+NetworkManager.StartHost()         NetworkManager.StartClient(hostIP)
     ↓                                    ↓
 Spawn Host Player                  Spawn Client Player
     ↓                                    ↓
@@ -221,11 +225,7 @@ Spawn Bots (Host Only)             Receive Bot States
 │  Clients: Send input, receive state         │
 └─────────────────────────────────────────────┘
     ↓
-Game End
-    ↓
-Sync Final Scores
-    ↓
-Return to Lobby
+Game End → Sync Final Scores
 ```
 
 ### 4.3 WebSocket AI Agent Flow
@@ -242,12 +242,16 @@ Broadcast Game State (10 Hz)       Receive State JSON
                                     Generate Commands
     ↓                                    ↓
 Receive Commands via WebSocket     Send Commands JSON
-    ↓                                    ↓
-CommandRouter.Execute()            Wait for Next State
     ↓
-AIInputFeeder → PlayerController
+WebSocketServerManager
     ↓
-Execute Action (Move/Shoot/Jump)
+CommandDispatcher.Dispatch()
+    ↓
+IPlayerCommandAPI (PlayerCommandAPI)
+    ↓
+AIInputFeeder → PlayerAssetsInputs
+    ↓
+PlayerController / PlayerShoot / PlayerReload
     ↓
 Capture New State
     ↓
@@ -258,33 +262,67 @@ Capture New State
 
 ## 5. Dataflow Architecture
 
-### 5.1 Network Synchronization Flow
+### 5.1 Command & Network Synchronization Flow
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  CLIENT SIDE                                    │
-│  1. Player presses W (move forward)             │
-│  2. Input captured by PlayerController          │
-│  3. Send ServerRpc(MoveInput) to Host           │
+│  COMMAND INPUT                                  │
+│  1. WebSocket JSON / DebugConsole C# call       │
+│  2. CommandDispatcher validates & routes        │
+│  3. PlayerCommandAPI calls AIInputFeeder        │
+│  4. PlayerAssetsInputs state flags updated      │
+└─────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────┐
+│  LOCAL EXECUTION                                │
+│  5. PlayerController reads input state          │
+│  6. CharacterController.Move() applied          │
+│  7. ServerRpc sent to Host for validation       │
 └─────────────────────────────────────────────────┘
                     ↓ Network
 ┌─────────────────────────────────────────────────┐
 │  HOST SIDE                                      │
-│  4. Receive ServerRpc                           │
-│  5. Validate input (anti-cheat)                 │
-│  6. Apply movement to CharacterController       │
-│  7. Update NetworkVariable<PlayerPosition>      │
+│  8. Validate input (anti-cheat)                 │
+│  9. Update NetworkVariable<PlayerPosition>      │
 └─────────────────────────────────────────────────┘
                     ↓ Network
 ┌─────────────────────────────────────────────────┐
 │  ALL CLIENTS                                    │
-│  8. OnNetworkVariableChanged callback           │
-│  9. Update visual position                      │
-│  10. Interpolate for smoothness                 │
+│  10. OnNetworkVariableChanged callback          │
+│  11. Update visual position / interpolate       │
 └─────────────────────────────────────────────────┘
 ```
 
-### 5.2 AI Decision-Making Dataflow
+### 5.2 Unified Command Architecture
+
+```
+WebSocket Client          DebugConsole (C# API)
+    ↓ JSON                      ↓ C# call
+WebSocketServerManager    DebugConsole
+    ↓ AgentCommand              ↓ AgentCommand
+              ↓
+        CommandDispatcher   ← single shared router
+              ↓
+        IPlayerCommandAPI   ← 6-method interface
+        ┌─────────────────────────────────┐
+        │  Move(Vector2 direction)        │
+        │  Look(float pitch, float yaw)   │
+        │  Shoot(bool pressed)            │
+        │  Reload()                       │
+        │  SwitchWeapon(int slotIndex)    │
+        │  Aim(bool active)               │
+        └─────────────────────────────────┘
+              ↓
+        PlayerCommandAPI
+              ↓
+        AIInputFeeder (Action delegates)
+              ↓
+        PlayerAssetsInputs (state fields)
+              ↓
+        PlayerController / PlayerShoot / PlayerReload
+```
+
+### 5.3 AI Decision-Making Dataflow
 
 ```
 Perception System
@@ -306,7 +344,7 @@ PlayerController.BotMove()
 PlayerController.BotShoot()
 ```
 
-### 5.3 Damage Calculation Flow
+### 5.4 Damage Calculation Flow
 
 ```
 Shooter Fires
@@ -425,21 +463,18 @@ Selector (Priority)
 
 ### 7.1 Client-Host Topology
 
+> Unity Relay and Lobby have been removed. Players connect directly via LAN/IP.
+
 ```
-                    ┌──────────────┐
-                    │  Unity Relay │
-                    │   (P2P Hub)  │
-                    └──────┬───────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-   ┌────▼────┐       ┌────▼────┐       ┌────▼────┐
-   │ Client 1│       │  HOST   │       │ Client 2│
-   │         │       │(Server) │       │         │
-   │ Player  │       │ Player  │       │ Player  │
-   └─────────┘       │ + Bots  │       └─────────┘
-                     └─────────┘
-                     
+        ┌──────────────────────────────────┐
+        │                                  │
+   ┌────▼────┐                       ┌────▼────┐
+   │ Client 1│    Direct UDP/IP      │  HOST   │
+   │         │ ◄──────────────────── │(Server) │
+   │ Player  │                       │ Player  │
+   └─────────┘                       │ + Bots  │
+                                     └─────────┘
+
 Host Authority:
 - Game logic execution
 - Damage validation
@@ -662,17 +697,26 @@ Each component is independent and focused
 │  WebSocketServerManager              │
 │  ├── Listens: ws://0.0.0.0:8080     │
 │  ├── Broadcasts: Game State @ 10Hz  │
-│  └── Receives: Commands              │
-│                                      │
-│  CommandRouter                       │
-│  ├── Parses JSON commands            │
-│  ├── Validates parameters            │
-│  └── Routes to PlayerController      │
-│                                      │
+│  └── Receives: AgentCommand JSON     │
+│              ↓                       │
+│  CommandDispatcher                   │
+│  ├── Validates (timestamp, bounds)   │
+│  └── Routes via IPlayerCommandAPI    │
+│              ↓                       │
+│  PlayerCommandAPI                    │
+│  ├── agentId → PlayerRoot binding    │
+│  └── Delegates to AIInputFeeder      │
+│              ↓                       │
 │  AIInputFeeder                       │
-│  ├── OnMove: Vector3                 │
-│  ├── OnLook: Vector3                 │
-│  └── OnAttack: bool                  │
+│  ├── Subscribed in InitializeStart() │
+│  ├── OnMove / OnLook / OnAttack      │
+│  ├── OnReload / OnSwitchWeapon       │
+│  └── OnAim                           │
+│              ↓                       │
+│  PlayerAssetsInputs (state flags)    │
+│              ↓                       │
+│  PlayerController / PlayerShoot /    │
+│  PlayerReload                        │
 └──────────────────────────────────────┘
               ↕ WebSocket
 ┌──────────────────────────────────────┐
@@ -693,11 +737,34 @@ Each component is independent and focused
   "commandType": "MOVE",
   "data": {
     "x": 0.0,
-    "y": 0.0,
     "z": 1.0
   },
   "agentId": "openclaw_agent_01",
   "timestamp": 1234567890.123
+}
+```
+
+**AIM Command Example**:
+```json
+{
+  "commandType": "AIM",
+  "data": {
+    "active": true
+  },
+  "agentId": "openclaw_agent_01",
+  "timestamp": 1234567890.456
+}
+```
+
+**SWITCH_WEAPON Command Example**:
+```json
+{
+  "commandType": "SWITCH_WEAPON",
+  "data": {
+    "weaponIndex": 1
+  },
+  "agentId": "openclaw_agent_01",
+  "timestamp": 1234567890.789
 }
 ```
 
@@ -740,28 +807,87 @@ Each component is independent and focused
 
 | Command | Description | Data Fields |
 |---------|-------------|-------------|
-| `MOVE` | Move player | `x, y, z` (direction vector) |
-| `LOOK` | Look direction | `pitch, yaw, roll` (degrees) |
-| `SHOOT` | Fire weapon | `duration` (seconds) |
-| `JUMP` | Jump | None |
-| `RELOAD` | Reload weapon | None |
-| `STOP` | Stop all actions | None |
-| `SWITCH_WEAPON` | Change weapon | `weaponIndex` (int) |
+| `MOVE` | Move player | `x, z` (normalized, x=strafe, z=forward) |
+| `LOOK` | Set camera orientation | `pitch, yaw` (degrees) |
+| `SHOOT` | Fire weapon | `active` (bool) |
+| `RELOAD` | Reload current weapon | *(none)* |
+| `SWITCH_WEAPON` | Change weapon slot | `weaponIndex` (0-based int) |
+| `AIM` | Aim down sights | `active` (bool) |
+| `STOP` | Stop movement and shooting | *(none)* |
+| `SET_VIEW` | Point display camera at agent | `viewTargetAgentId` (string, optional) |
 
 ### 10.4 Integration Flow
 
 ```
-1. Unity starts WebSocket server on port 8080
-2. AI agent connects via WebSocket
-3. Unity broadcasts game state 10 times/second
-4. AI agent processes state with LLM
-5. AI agent generates command JSON
-6. AI agent sends command to Unity
-7. Unity validates and routes command
-8. Command executed via AIInputFeeder
-9. Game state updates
-10. New state broadcasted (loop continues)
+1.  Unity starts WebSocket server on port 8080
+     ├── Automatic via WebSocketServerManager.autoStart = true
+     └── Or explicit: InGameManager.InitializeSinglePlayerMode() calls Initialize()
+2.  AI agent connects via WebSocket to ws://localhost:8080/agent
+3.  Unity broadcasts game state 10 times/second
+4.  AI agent processes state with LLM
+5.  AI agent generates command JSON (commandType + data + agentId + timestamp)
+6.  AI agent sends AgentCommand to Unity
+7.  WebSocketServerManager queues command on main thread (ConcurrentQueue)
+8.  WebSocketServerManager.Update() dequeues and calls CommandDispatcher.Dispatch()
+9.  CommandDispatcher.Dispatch() validates command
+     ├── Timestamp age check (≤ 5 seconds, supports Unix epoch and Unity Time.time)
+     ├── MOVE direction magnitude check (≤ 1.5)
+     └── LOOK pitch/yaw range check
+10. PlayerCommandAPI.ResolvePlayer(agentId) finds/binds the target PlayerRoot
+     ├── Explicit map: agentId → PlayerRoot (bound on first command)
+     └── Fallback: first non-bot PlayerRoot in scene
+11. AIInputFeeder Action delegate fired (OnMove / OnLook / OnAttack / etc.)
+12. AIInputFeeder handler sets both:
+     ├── feeder.moveDir / feeder.lookEuler  (bot path)
+     └── PlayerAssetsInputs state flags     (non-bot path)
+13. PlayerController / PlayerShoot / PlayerReload reads flags in Update()
+14. Game state updates
+15. New state broadcasted (loop continues)
 ```
+
+### 10.5 Debug Console (Secondary Control Path)
+
+The `DebugConsole` component provides a secondary control path for local testing without a WebSocket client. It constructs `AgentCommand` objects internally and routes them through the same `CommandDispatcher`, ensuring identical validation and execution paths.
+
+```csharp
+// Available in UNITY_EDITOR and DEVELOPMENT_BUILD
+DebugConsole.Instance.Move(new Vector2(0, 1));   // move forward
+DebugConsole.Instance.Look(0f, 90f);             // turn right
+DebugConsole.Instance.Shoot(true);               // start firing
+DebugConsole.Instance.Reload();                  // reload
+DebugConsole.Instance.SwitchWeapon(1);           // slot 1 (0-based)
+DebugConsole.Instance.Aim(true);                 // aim down sights
+```
+
+A GUI panel is automatically shown in Editor/Development builds.
+
+### 10.6 AIInputFeeder Initialization
+
+`AIInputFeeder` inherits from `PlayerBehaviour` → `NetworkBehaviour`. Unity can suppress or delay `Start()` on `NetworkBehaviour` components. This project uses a **priority-based initialization system** driven by `PlayerRoot`:
+
+- `PlayerRoot.Awake()` calls `InitializeAwake()` on all `IInitAwake` components (sorted by priority)
+- `PlayerRoot.Start()` calls `InitializeStart()` on all `IInitStart` components
+- `PlayerRoot.OnNetworkSpawn()` calls `InitializeOnNetworkSpawn()` on all `IInitNetwork` components
+
+`AIInputFeeder` subscribes its `OnMove` / `OnLook` / `OnAttack` / `OnReload` / `OnSwitchWeapon` / `OnAim` Action delegates inside `InitializeStart()` — **not** `void Start()` — to guarantee subscriptions exist before any WebSocket command arrives:
+
+```csharp
+// CORRECT — participates in PlayerRoot's ordered initialization
+public override void InitializeStart()
+{
+    base.InitializeStart();
+    OnMove += (val) => {
+        moveDir = val;
+        PlayerRoot.PlayerAssetsInputs.MoveInput(new Vector2(val.x, val.z));
+    };
+    // ... other delegates
+}
+
+// WRONG — Start() may not fire in time for NetworkBehaviour
+void Start() { OnMove += ...; }
+```
+
+> **Pitfall**: Using `void Start()` instead of `override InitializeStart()` causes `OnMove` to be `null` when the first command arrives, silently dropping all movement/look/shoot input.
 
 ---
 
@@ -770,7 +896,8 @@ Each component is independent and focused
 ```
 Assets/FPS-Game/Scripts/
 ├── Player/
-│   ├── PlayerController.cs        # Movement, input handling
+│   ├── PlayerController.cs        # Movement, camera (programmatic only)
+│   ├── PlayerAssetsInputs.cs      # Input state container (setters only, no InputSystem)
 │   ├── PlayerShoot.cs             # Weapon firing logic
 │   ├── PlayerReload.cs            # Reload mechanics
 │   ├── PlayerInventory.cs         # Weapon management
@@ -778,12 +905,19 @@ Assets/FPS-Game/Scripts/
 │   └── PlayerNetwork.cs           # Network synchronization
 ├── Bot/
 │   ├── BotController.cs           # FSM state machine
+│   ├── AIInputFeeder.cs           # Bridge: command layer → PlayerAssetsInputs
 │   └── BotBlackboardLinker.cs     # BT data interface
 ├── System/
 │   ├── InGameManager.cs           # Game session manager
-│   ├── WebSocketServerManager.cs  # WebSocket server
-│   ├── CommandRouter.cs           # Command routing
+│   ├── WebSocketServerManager.cs  # WebSocket server (broadcasts state, receives commands)
+│   ├── CommandDispatcher.cs       # Unified command router (validates + routes)
+│   ├── IPlayerCommandAPI.cs       # 6-method interface contract
+│   ├── PlayerCommandAPI.cs        # Concrete IPlayerCommandAPI implementation
+│   ├── CoroutineManager.cs        # Singleton for coroutines from non-MonoBehaviour
+│   ├── WebSocketDataStructures.cs # AgentCommand / CommandData JSON structs
 │   └── GameMode.cs                # Game mode enum
+├── Debug/
+│   └── DebugConsole.cs            # Secondary control path (C# API + OnGUI panel)
 ├── TacticalAI/
 │   ├── ZoneController.cs          # Zone management
 │   └── DijkstraPathfinding.cs     # Zone pathfinding
@@ -798,7 +932,7 @@ Assets/FPS-Game/Scripts/
 ### Unity Project Settings
 - **Scripting Backend**: IL2CPP
 - **API Compatibility**: .NET Standard 2.1
-- **Active Input Handling**: Both (Old and New)
+- **Active Input Handling**: Old (Unity InputSystem package removed)
 - **Render Pipeline**: URP
 
 ### Network Settings
@@ -816,7 +950,7 @@ Assets/FPS-Game/Scripts/
 
 ---
 
-**Document Version**: 2.0  
-**Last Updated**: 2026-04-23  
+**Document Version**: 3.1  
+**Last Updated**: 2026-04-25  
 **Unity Version**: 6000.4 LTS  
-**Status**: Complete and Production-Ready
+**Status**: Active Development
