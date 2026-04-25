@@ -37,6 +37,37 @@ Available commands:
 
 
 # ---------------------------------------------------------------------------
+# Wall-collision / stuck detector
+# ---------------------------------------------------------------------------
+
+class StuckDetector:
+    STUCK_FRAMES = 3
+    POS_EPSILON  = 0.02   # metres
+
+    def __init__(self):
+        self._last_pos    = None
+        self._stuck_count = 0
+        self.is_moving    = False
+
+    def on_position(self, pos: dict) -> bool:
+        if not self.is_moving:
+            self._stuck_count = 0
+            self._last_pos = None
+            return False
+        cur = (pos.get("x", 0.0), pos.get("y", 0.0), pos.get("z", 0.0))
+        if self._last_pos is not None:
+            if all(abs(cur[i] - self._last_pos[i]) < self.POS_EPSILON for i in range(3)):
+                self._stuck_count += 1
+            else:
+                self._stuck_count = 0
+        self._last_pos = cur
+        return self._stuck_count >= self.STUCK_FRAMES
+
+
+_stuck = StuckDetector()
+
+
+# ---------------------------------------------------------------------------
 # Low-level helpers
 # ---------------------------------------------------------------------------
 
@@ -51,7 +82,22 @@ def make_command(command_type: str, data: dict) -> str:
 
 async def send(ws, command_type: str, data: dict = {}):
     await ws.send(make_command(command_type, data))
-    print(f"  → {command_type} {data if data else ''}")
+    print(f"  \u2192 {command_type} {data if data else ''}")
+
+
+async def incoming_listener(ws):
+    """Background task: receive broadcasts and auto-stop on wall hit."""
+    async for raw in ws:
+        try:
+            msg = json.loads(raw)
+            if "player" in msg:
+                p = msg["player"]
+                if "position" in p and _stuck.on_position(p["position"]):
+                    print("\n  [console] Wall detected \u2014 auto-stop.")
+                    _stuck.is_moving = False
+                    await send(ws, "STOP", {})
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -66,14 +112,19 @@ async def dispatch(ws, line: str):
     cmd = parts[0].lower()
 
     if cmd in ("fwd", "forward"):
+        _stuck.is_moving = True; _stuck._stuck_count = 0
         await send(ws, "MOVE", {"x": 0.0, "z": 1.0})
     elif cmd in ("back", "backward"):
+        _stuck.is_moving = True; _stuck._stuck_count = 0
         await send(ws, "MOVE", {"x": 0.0, "z": -1.0})
     elif cmd == "left":
-        await send(ws, "MOVE", {"x": -1.0, "z": 0.0})
+        _stuck.is_moving = True; _stuck._stuck_count = 0
+        await send(ws, "MOVE", {"x": -0.4, "z": 0.0})
     elif cmd == "right":
-        await send(ws, "MOVE", {"x": 1.0, "z": 0.0})
+        _stuck.is_moving = True; _stuck._stuck_count = 0
+        await send(ws, "MOVE", {"x": 0.4, "z": 0.0})
     elif cmd == "stop":
+        _stuck.is_moving = False
         await send(ws, "STOP", {})
     elif cmd == "look":
         if len(parts) < 3:
@@ -97,6 +148,7 @@ async def dispatch(ws, line: str):
     elif cmd in ("help", "?", "h"):
         print(HELP)
     elif cmd in ("quit", "exit", "q"):
+        _stuck.is_moving = False
         await send(ws, "STOP", {})
         return False
     else:
@@ -117,6 +169,7 @@ async def main():
             await send(ws, "SET_VIEW", {"viewTargetAgentId": AGENT_ID})
 
             loop = asyncio.get_event_loop()
+            listener = asyncio.create_task(incoming_listener(ws))
             running = True
             while running:
                 try:
@@ -124,8 +177,10 @@ async def main():
                     running = await dispatch(ws, line)
                 except (EOFError, KeyboardInterrupt):
                     print("\nInterrupted.")
+                    _stuck.is_moving = False
                     await send(ws, "STOP", {})
                     break
+            listener.cancel()
     except Exception as e:
         print(f"Connection error: {e}")
         print("Make sure Unity is running and WebSocket server is active (port 8080).")

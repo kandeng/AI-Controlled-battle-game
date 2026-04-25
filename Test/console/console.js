@@ -36,6 +36,31 @@ Available commands:
 `;
 
 // ---------------------------------------------------------------------------
+// Wall-collision / stuck detector
+// ---------------------------------------------------------------------------
+
+const STUCK_FRAMES = 3;
+const POS_EPSILON  = 0.02;  // metres
+
+const stuck = {
+  isMoving:   false,
+  lastPos:    null,
+  stuckCount: 0,
+  onPosition(pos) {
+    if (!this.isMoving) { this.stuckCount = 0; this.lastPos = null; return false; }
+    if (this.lastPos) {
+      const same =
+        Math.abs(pos.x - this.lastPos.x) < POS_EPSILON &&
+        Math.abs(pos.y - this.lastPos.y) < POS_EPSILON &&
+        Math.abs(pos.z - this.lastPos.z) < POS_EPSILON;
+      this.stuckCount = same ? this.stuckCount + 1 : 0;
+    }
+    this.lastPos = { ...pos };
+    return this.stuckCount >= STUCK_FRAMES;
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Low-level helpers
 // ---------------------------------------------------------------------------
 
@@ -67,19 +92,24 @@ function dispatch(ws, line, rl) {
   switch (cmd) {
     case 'fwd':
     case 'forward':
+      stuck.isMoving = true; stuck.stuckCount = 0;
       send(ws, 'MOVE', { x: 0, z: 1 });
       break;
     case 'back':
     case 'backward':
+      stuck.isMoving = true; stuck.stuckCount = 0;
       send(ws, 'MOVE', { x: 0, z: -1 });
       break;
     case 'left':
+      stuck.isMoving = true; stuck.stuckCount = 0;
       send(ws, 'MOVE', { x: -1, z: 0 });
       break;
     case 'right':
+      stuck.isMoving = true; stuck.stuckCount = 0;
       send(ws, 'MOVE', { x: 1, z: 0 });
       break;
     case 'stop':
+      stuck.isMoving = false;
       send(ws, 'STOP');
       break;
     case 'look':
@@ -119,6 +149,7 @@ function dispatch(ws, line, rl) {
     case 'quit':
     case 'exit':
     case 'q':
+      stuck.isMoving = false;
       send(ws, 'STOP');
       rl.close();
       ws.close();
@@ -148,6 +179,19 @@ function main() {
   ws.once('open', () => {
     console.log("Connected. Type 'help' for commands, 'quit' to exit.\n");
     send(ws, 'SET_VIEW', { viewTargetAgentId: AGENT_ID });
+
+    // Listen for broadcasts — auto-stop on wall hit
+    ws.on('message', raw => {
+      try {
+        const msg = JSON.parse(raw);
+        if (msg.player && msg.player.position && stuck.onPosition(msg.player.position)) {
+          console.log('\n  [console] Wall detected \u2014 auto-stop.');
+          stuck.isMoving = false;
+          send(ws, 'STOP');
+          rl.prompt();
+        }
+      } catch (_) {}
+    });
 
     const rl = readline.createInterface({
       input:  process.stdin,

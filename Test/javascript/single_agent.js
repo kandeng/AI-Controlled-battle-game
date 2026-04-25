@@ -41,11 +41,48 @@ function sleep(ms) {
 }
 
 // ---------------------------------------------------------------------------
+// Wall-collision / stuck detector
+// ---------------------------------------------------------------------------
+
+const STUCK_FRAMES = 3;
+const POS_EPSILON  = 0.02;  // metres
+
+const stuck = {
+  isMoving:   false,
+  lastPos:    null,
+  stuckCount: 0,
+
+  /** Call with msg.player.position each time a broadcast arrives. */
+  onPosition(pos) {
+    if (!this.isMoving) {
+      this.stuckCount = 0;
+      this.lastPos    = null;
+      return false;
+    }
+    if (this.lastPos) {
+      const same =
+        Math.abs(pos.x - this.lastPos.x) < POS_EPSILON &&
+        Math.abs(pos.y - this.lastPos.y) < POS_EPSILON &&
+        Math.abs(pos.z - this.lastPos.z) < POS_EPSILON;
+      this.stuckCount = same ? this.stuckCount + 1 : 0;
+    }
+    this.lastPos = { ...pos };
+    return this.stuckCount >= STUCK_FRAMES;
+  },
+};
+
+// ---------------------------------------------------------------------------
 // High-level actions
 // ---------------------------------------------------------------------------
 
-const move         = (ws, x, z)      => send(ws, 'MOVE',         { x, z });
-const stop         = (ws)            => send(ws, 'STOP',         {});
+const move = (ws, x, z) => {
+  stuck.isMoving = true; stuck.stuckCount = 0;
+  send(ws, 'MOVE', { x, z });
+};
+const stop = (ws) => {
+  stuck.isMoving = false;
+  send(ws, 'STOP', {});
+};
 const look         = (ws, pitch, yaw)=> send(ws, 'LOOK',         { pitch, yaw });
 const shoot        = (ws, active, duration = 0) => send(ws, 'SHOOT', { active, duration });
 const reloadWeapon = (ws)            => send(ws, 'RELOAD',       {});
@@ -58,7 +95,7 @@ const setView      = (ws, targetId = AGENT_ID) =>
 // Game-state listener
 // ---------------------------------------------------------------------------
 
-function onMessage(raw) {
+function onMessage(raw, ws) {
   try {
     const msg = JSON.parse(raw);
     if (msg.type === 'welcome') {
@@ -73,6 +110,11 @@ function onMessage(raw) {
         `State:${p.movementState} ` +
         `Enemies:${(msg.enemies || []).length}`
       );
+      if (p.position && stuck.onPosition(p.position)) {
+        console.log(`[${AGENT_ID}] Wall detected — auto-stop.`);
+        stuck.isMoving = false;
+        send(ws, 'STOP', {});
+      }
     }
   } catch (e) {
     console.error(`[${AGENT_ID}] Parse error:`, e.message);
@@ -93,7 +135,7 @@ async function main() {
     ws.once('error', reject);
   });
 
-  ws.on('message', onMessage);
+  ws.on('message', raw => onMessage(raw, ws));
   ws.on('close',   (code, reason) =>
     console.log(`[${AGENT_ID}] Connection closed: ${code} – ${reason}`));
 

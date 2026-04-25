@@ -53,11 +53,49 @@ function sleep(ms) {
 }
 
 // ---------------------------------------------------------------------------
+// Wall-collision / stuck detector (one instance per agent)
+// ---------------------------------------------------------------------------
+
+const STUCK_FRAMES = 3;
+const POS_EPSILON  = 0.02;  // metres
+
+const detectors = {};
+
+function getDetector(agentId) {
+  if (!detectors[agentId]) {
+    detectors[agentId] = {
+      isMoving:   false,
+      lastPos:    null,
+      stuckCount: 0,
+      onPosition(pos) {
+        if (!this.isMoving) { this.stuckCount = 0; this.lastPos = null; return false; }
+        if (this.lastPos) {
+          const same =
+            Math.abs(pos.x - this.lastPos.x) < POS_EPSILON &&
+            Math.abs(pos.y - this.lastPos.y) < POS_EPSILON &&
+            Math.abs(pos.z - this.lastPos.z) < POS_EPSILON;
+          this.stuckCount = same ? this.stuckCount + 1 : 0;
+        }
+        this.lastPos = { ...pos };
+        return this.stuckCount >= STUCK_FRAMES;
+      },
+    };
+  }
+  return detectors[agentId];
+}
+
+// ---------------------------------------------------------------------------
 // High-level actions (all require explicit agentId)
 // ---------------------------------------------------------------------------
 
-const move         = (ws, id, x, z)       => send(ws, 'MOVE',         { x, z },               id);
-const stop         = (ws, id)             => send(ws, 'STOP',         {},                      id);
+const move = (ws, id, x, z) => {
+  const d = getDetector(id); d.isMoving = true; d.stuckCount = 0;
+  send(ws, 'MOVE', { x, z }, id);
+};
+const stop = (ws, id) => {
+  getDetector(id).isMoving = false;
+  send(ws, 'STOP', {}, id);
+};
 const look         = (ws, id, pitch, yaw) => send(ws, 'LOOK',         { pitch, yaw },          id);
 const shoot        = (ws, id, active, d=0)=> send(ws, 'SHOOT',        { active, duration: d }, id);
 const reloadWeapon = (ws, id)             => send(ws, 'RELOAD',       {},                      id);
@@ -70,7 +108,7 @@ const setView      = (ws, sourceId, targetId) =>
 // Game-state listener
 // ---------------------------------------------------------------------------
 
-function makeListener(agentId) {
+function makeListener(agentId, ws) {
   return function onMessage(raw) {
     try {
       const msg = JSON.parse(raw);
@@ -85,6 +123,12 @@ function makeListener(agentId) {
           `Ammo:${p.currentAmmo} ` +
           `State:${p.movementState}`
         );
+        const d = getDetector(agentId);
+        if (p.position && d.onPosition(p.position)) {
+          console.log(`  [${agentId}] Wall detected — auto-stop.`);
+          d.isMoving = false;
+          send(ws, 'STOP', {}, agentId);
+        }
       }
     } catch (_) { /* ignore */ }
   };
@@ -101,7 +145,7 @@ async function connectAgent(agentId) {
     ws.once('open',  resolve);
     ws.once('error', reject);
   });
-  ws.on('message', makeListener(agentId));
+  ws.on('message', makeListener(agentId, ws));
   ws.on('close', (code) => console.log(`[${agentId}] Closed (${code})`));
   return ws;
 }

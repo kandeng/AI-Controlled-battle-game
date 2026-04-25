@@ -37,6 +37,43 @@ UNITY_WS_URL = "ws://localhost:8080/agent"
 
 
 # ---------------------------------------------------------------------------
+# Wall-collision / stuck detector (one instance per agent)
+# ---------------------------------------------------------------------------
+
+class StuckDetector:
+    STUCK_FRAMES = 3
+    POS_EPSILON  = 0.02   # metres
+
+    def __init__(self):
+        self._last_pos    = None
+        self._stuck_count = 0
+        self.is_moving    = False
+
+    def on_position(self, pos: dict) -> bool:
+        if not self.is_moving:
+            self._stuck_count = 0
+            self._last_pos = None
+            return False
+        cur = (pos.get("x", 0.0), pos.get("y", 0.0), pos.get("z", 0.0))
+        if self._last_pos is not None:
+            if all(abs(cur[i] - self._last_pos[i]) < self.POS_EPSILON for i in range(3)):
+                self._stuck_count += 1
+            else:
+                self._stuck_count = 0
+        self._last_pos = cur
+        return self._stuck_count >= self.STUCK_FRAMES
+
+
+_detectors: dict[str, StuckDetector] = {}
+
+
+def get_detector(agent_id: str) -> StuckDetector:
+    if agent_id not in _detectors:
+        _detectors[agent_id] = StuckDetector()
+    return _detectors[agent_id]
+
+
+# ---------------------------------------------------------------------------
 # Low-level helpers (same as single_agent.py)
 # ---------------------------------------------------------------------------
 
@@ -55,8 +92,12 @@ async def send(ws, command_type: str, data: dict, agent_id: str):
     print(f"  [{agent_id}] → {command_type} {data}")
 
 
-async def move(ws, agent_id, x, z):      await send(ws, "MOVE",         {"x": x, "z": z},                agent_id)
-async def stop(ws, agent_id):            await send(ws, "STOP",         {},                               agent_id)
+async def move(ws, agent_id, x, z):
+    d = get_detector(agent_id); d.is_moving = True; d._stuck_count = 0
+    await send(ws, "MOVE", {"x": x, "z": z}, agent_id)
+async def stop(ws, agent_id):
+    get_detector(agent_id).is_moving = False
+    await send(ws, "STOP", {}, agent_id)
 async def look(ws, agent_id, p, y):      await send(ws, "LOOK",         {"pitch": p, "yaw": y},           agent_id)
 async def shoot(ws, agent_id, a, d=0):   await send(ws, "SHOOT",        {"active": a, "duration": d},     agent_id)
 async def reload_w(ws, agent_id):        await send(ws, "RELOAD",       {},                               agent_id)
@@ -85,6 +126,11 @@ async def listen_state(ws, agent_id: str):
                     f"Ammo:{p.get('currentAmmo',0)} "
                     f"State:{p.get('movementState','?')}"
                 )
+                d = get_detector(agent_id)
+                if "position" in p and d.on_position(p["position"]):
+                    print(f"  [{agent_id}] Wall detected — auto-stop.")
+                    d.is_moving = False
+                    await send(ws, "STOP", {}, agent_id)
         except Exception:
             pass
 

@@ -46,10 +46,13 @@ async def send(ws, command_type: str, data: dict = {}, agent_id: str = AGENT_ID)
 
 async def move(ws, x: float, z: float):
     """Move: x = strafe, z = forward (normalized)."""
+    _stuck.is_moving = True
+    _stuck._stuck_count = 0
     await send(ws, "MOVE", {"x": x, "z": z})
 
 
 async def stop(ws):
+    _stuck.is_moving = False
     await send(ws, "STOP", {})
 
 
@@ -81,11 +84,55 @@ async def set_view(ws, target_agent_id: str = AGENT_ID):
 
 
 # ---------------------------------------------------------------------------
+# Wall-collision / stuck detector
+# ---------------------------------------------------------------------------
+
+class StuckDetector:
+    """
+    Watches the broadcasted player position.  If the position does not change
+    for STUCK_FRAMES consecutive state updates while a MOVE is active,
+    the character is assumed to be blocked by a wall and STOP is sent.
+    """
+    STUCK_FRAMES   = 3      # consecutive identical-position updates before STOP
+    POS_EPSILON    = 0.02   # metres — positions closer than this are "the same"
+
+    def __init__(self):
+        self._last_pos   = None   # (x, y, z) tuple from previous update
+        self._stuck_count = 0
+        self.is_moving   = False  # set True when MOVE is sent, False on STOP
+
+    def on_position(self, pos: dict) -> bool:
+        """
+        Call with the 'position' dict from the broadcast.  Returns True when
+        a STOP should be sent (character is stuck against a wall).
+        """
+        if not self.is_moving:
+            self._stuck_count = 0
+            self._last_pos = None
+            return False
+
+        cur = (pos.get("x", 0.0), pos.get("y", 0.0), pos.get("z", 0.0))
+        if self._last_pos is not None:
+            dx = abs(cur[0] - self._last_pos[0])
+            dy = abs(cur[1] - self._last_pos[1])
+            dz = abs(cur[2] - self._last_pos[2])
+            if dx < self.POS_EPSILON and dy < self.POS_EPSILON and dz < self.POS_EPSILON:
+                self._stuck_count += 1
+            else:
+                self._stuck_count = 0
+        self._last_pos = cur
+        return self._stuck_count >= self.STUCK_FRAMES
+
+
+_stuck = StuckDetector()
+
+
+# ---------------------------------------------------------------------------
 # Game-state listener
 # ---------------------------------------------------------------------------
 
 async def listen_state(ws):
-    """Background task: print game state updates from Unity."""
+    """Background task: print game state updates and auto-stop on wall hit."""
     async for raw in ws:
         try:
             msg = json.loads(raw)
@@ -100,6 +147,10 @@ async def listen_state(ws):
                     f"State:{p.get('movementState','?')} "
                     f"Enemies:{len(msg.get('enemies', []))}"
                 )
+                if "position" in p and _stuck.on_position(p["position"]):
+                    print(f"[{AGENT_ID}] Wall detected — auto-stop.")
+                    _stuck.is_moving = False
+                    await stop(ws)
         except Exception as e:
             print(f"[{AGENT_ID}] Parse error: {e}")
 
