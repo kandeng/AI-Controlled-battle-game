@@ -8,6 +8,12 @@ Since the original relay, lobby, authentication and network management modules a
 
 The size of [Kieeran/FPS-Game](https://github.com/Kieeran/FPS-Game) is 4.3G. And the size of our repo is 1.2G.
 
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=4bKSA5Fq5A8">
+    <img src="https://img.youtube.com/vi/4bKSA5Fq5A8/maxresdefault.jpg" alt="AI Controlled Battle Game" style="width:80%;">
+  </a>
+</p>
+
 
 ---
 
